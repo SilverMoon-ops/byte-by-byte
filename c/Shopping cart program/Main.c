@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 int main() {
     
@@ -14,6 +15,7 @@ int main() {
 
     printf("What item would you like to purchase?: ");
     fgets(item, sizeof(item), stdin);
+    item[strlen(item) - 1] = '\0'; // Remove newline character from input
 
     printf("What is the price for each?: ");
     scanf("%f", &price);
@@ -23,6 +25,6 @@ int main() {
 
     total = price * quantity;
 
-    printf("You have purchased %d of %s at a price of %.2f%c each for a total of %.2f%c\n", quantity, item, price, currency, total, currency);
+    printf("You have purchased %d of %s/s at a price of %.2f%c each for a total of %.2f%c\n", quantity, item, price, currency, total, currency);
     return 0;
 }
