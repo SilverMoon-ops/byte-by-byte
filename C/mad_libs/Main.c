@@ -12,10 +12,15 @@ int main() {
     char adjective3[50] = "";
 
     printf("Enter an adjective (descripition): ");
+    fgets(adjective1, sizeof(adjective1), stdin);
     printf("Enter a noun (person, place, or thing): ");
+    fgets(noun, sizeof(noun), stdin);
     printf("Enter an adjective (descripition): ");
+    fgets(adjective2, sizeof(adjective2), stdin);
     printf("Enter a verb (action word): ");
+    fgets(verb, sizeof(verb), stdin);
     printf("Enter an adjective (descripition): ");
+    fgets(adjective3, sizeof(adjective3), stdin);
 
 
 }
