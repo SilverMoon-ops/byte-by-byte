@@ -31,12 +31,11 @@ int main() {
     fgets(adjective3, sizeof(adjective3), stdin);
     adjective3[strlen(adjective3) - 1] = '\0'; // Remove newline character
 
-    printf("%s\n", noun);
-    printf("%s\n", verb);
-    printf("%s\n", adjective1);
-    printf("%s\n", adjective2);
-    printf("%s\n", adjective3);
-
+    printf("\n----- Your Mad Lib Story -----\n");
+    printf("Once upon a time, in a %s land, there was a %s %s.\n", adjective1, adjective2, noun);
+    printf("Every day, it loved to %s while wearing a %s hat.\n", verb, adjective3);
+    printf("Everyone who saw it couldn’t stop laughing — it was truly unforgettable!\n");
+    
     return 0;
 
 
