@@ -1,0 +1,14 @@
+# Ignore compiled binaries
+*.exe
+*.out
+*.o
+*.class
+
+# Ignore IDE / editor files
+.vscode/
+.idea/
+.DS_Store
+
+# Ignore temporary files
+*.log
+*.tmp
