@@ -12,20 +12,16 @@ int main() {
     printf("Enter the radius of the circle: ");
     scanf("%lf", &radius);
 
-    area = PI * pow(radius, 2); // math.h function to calculate power
-    surface_area = 4 * PI * pow(radius, 2); // math.h function to calculate power
-    volume = (4.0 / 3.0) * PI * pow(radius, 3); // math.h function to calculate power
+    //math.h functions used to calculate area, surface area, and volume
+
+    area = PI * pow(radius, 2);
+    surface_area = 4 * PI * pow(radius, 2); 
+    volume = (4.0 / 3.0) * PI * pow(radius, 3);
 
 
     printf("The area of the circle with radius %.2lf is %.2lf\n", radius, area);
     printf("The surface area of the sphere with radius %.2lf is %.2lf\n", radius, surface_area);
     printf("The volume of the sphere with radius %.2lf is %.2lf\n", radius, volume);
     
-
-
-
-
-
-
     return 0; 
 }
