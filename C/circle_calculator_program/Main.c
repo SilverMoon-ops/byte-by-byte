@@ -10,6 +10,10 @@ int main() {
     printf("Enter the radius of the circle: ");
     scanf("%lf", &radius);
 
+    area = PI * pow(radius, 2); // math.h function to calculate power
+    printf("The area of the circle with radius %.2f is %.2f\n", radius, area);
+
+
     
 
 
