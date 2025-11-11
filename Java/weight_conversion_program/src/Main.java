@@ -23,17 +23,14 @@ public class Main {
             System.out.print("Enter the weight in lbs: ");
             weight = scanner.nextDouble();
             newWeight = weight * 0.45359237;
-            System.out.printf("The new weight in kgs is: %2f", newWeight);
+            System.out.printf("The new weight in kgs is: %.2f\n", newWeight);
         }
         else if(choice == 2){
             System.out.print("Enter the weight in kgs: ");
             weight = scanner.nextDouble();
             newWeight = weight * 2.20462;
-            System.out.printf("The new weight in lbs is: %.2f", newWeight);
+            System.out.printf("The new weight in lbs is: %.2f\n", newWeight);
         }
-
-
-
         else{
             System.out.println("Invalid!");
         }
