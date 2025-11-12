@@ -18,3 +18,7 @@ It takes user input for the temperature value and the target unit, then performs
 
 ```java
 newTemp = (unit.equals("C")) ? (temp - 32) * 5 / 9 : (temp * 9 / 5) + 32;
+
+If user inputs C, the program converts from Fahrenheit → Celsius.
+Otherwise, it converts from Celsius → Fahrenheit.
+The ternary operator replaces a traditional if-else block for a cleaner look
