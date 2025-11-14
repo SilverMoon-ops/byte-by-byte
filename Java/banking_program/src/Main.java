@@ -3,10 +3,18 @@ import java.util.Scanner;
 public class Main {
     public static void main(String[] args){
 
-        Scanner scanner = new Scanner(System.in);
+        //declare variables
 
-        
+        // display menu
 
-        scanner.close();
+        // get and process user choice
+
+        // showBalance
+
+        // deposit
+
+        // withdraw
+
+        // exit massage
     }
 }
