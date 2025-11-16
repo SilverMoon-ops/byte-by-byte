@@ -15,24 +15,6 @@ Prints individual rolls and the final total
 
 Clean, readable, and beginner-friendly code structure
 
-📸 Example Output
-Enter the # of dice to roll: 2
-  -------
-| ●     |
-|       |
-|     ● |
-  -------
-You rolled: 2
-
-  -------
-| ●   ● |
-|   ●   |
-| ●   ● |
-  -------
-You rolled: 5
-
-Total: 7
-
 🧠 How It Works
 
 User enters the number of dice.
