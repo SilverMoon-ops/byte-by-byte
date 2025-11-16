@@ -15,21 +15,22 @@ public class Main {
         if (numOfDice > 0){
 
             for (int i = 0; i < numOfDice; i++){
-                int roll = random.nextInt(1 , 7);
+                int roll = random.nextInt(6) + 1; // safer version
                 printDie(roll);
                 System.out.println("You rolled: " + roll);
                 total += roll;
+
+                System.out.println(); // spacing
             }
             System.out.println("Total: " + total);
         }
         else{
-            System.out.println("# of dice must be grater than 0");
+            System.out.println("# of dice must be greater than 0");
         }
-
-        // get the ascii art for dice
 
         scanner.close();
     }
+
     static void printDie(int roll){
 
         String dice1 = """
@@ -91,3 +92,4 @@ public class Main {
         }
     }
 }
+
