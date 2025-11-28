@@ -8,7 +8,7 @@ public class Main {
 
         Scanner scanner = new Scanner(System.in);
 
-        int balance = 100;
+        int balance;
         int bet;
         int payout;
         String[] row;
@@ -18,6 +18,40 @@ public class Main {
         System.out.println("   Welcome to Java Slots   ");
         System.out.println("Symbols: 🍒 🍉 🍋 🔔 ⭐");
         System.out.println("***************************");
+
+        System.out.println("Choose difficulty:");
+        System.out.println("1. Easy   (Recommended: $200)");
+        System.out.println("2. Normal (Recommended: $100)");
+        System.out.println("3. Hard   (Recommended: $50)");
+        System.out.print("Enter choice (1-3): ");
+
+        int difficulty = scanner.nextInt();
+        scanner.nextLine();
+
+        int recommendedBalance;
+
+        switch (difficulty) {
+            case 1 -> recommendedBalance = 200;
+            case 2 -> recommendedBalance = 100;
+            case 3 -> recommendedBalance = 50;
+            default -> {
+                recommendedBalance = 100;
+                System.out.println("Invalid choice. Defaulting to NORMAL mode.");
+            }
+        }
+
+        System.out.println("Recommended starting balance: $" + recommendedBalance);
+        System.out.print("Enter your actual starting balance: $");
+         balance = scanner.nextInt();
+        scanner.nextLine();
+
+        if (balance <= 0) {
+            System.out.println("Invalid! Setting balance to recommended: $" + recommendedBalance);
+            balance = recommendedBalance;
+        }
+
+        System.out.println("\nYou are starting the game with $" + balance);
+
 
         while (balance > 0){
             System.out.println("Current balance: $" + balance);
