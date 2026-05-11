@@ -3,6 +3,7 @@ package sonus.app;
 import sonus.core.JavaFXPlayerEngine;
 import sonus.core.PlaylistManager;
 import sonus.model.Song;
+import sonus.core.MetadataExtractor;
 
 import javafx.embed.swing.JFXPanel;
 
@@ -55,65 +56,61 @@ public class MainApp {
 
                     System.out.println("""
 
-                            Available Commands:
+        ========= SONUS COMMANDS =========
 
-                            add <filepath>
-                            -> Add single WAV file
+        add <filepath>
+        -> Add a single audio file
 
-                            folder <folderpath>
-                            -> Load all WAV files from folder
+        folder <folderpath>
+        -> Load supported audio files from folder
 
-                            play
-                            -> Play current song
+        play
+        -> Play current song
 
-                            pause
-                            -> Pause playback
+        pause
+        -> Pause playback
 
-                            stop
-                            -> Stop playback
+        stop
+        -> Stop playback
 
-                            next
-                            -> Play next song
+        next
+        -> Play next song
 
-                            prev
-                            -> Play previous song
+        prev
+        -> Play previous song
 
-                            playlist
-                            -> Show playlist
+        shuffle on
+        -> Enable shuffle mode
 
-                            current
-                            -> Show current song info
+        shuffle off
+        -> Disable shuffle mode
 
-                            remove <index>
-                            -> Remove song from playlist
+        repeatone on
+        -> Repeat current song
 
-                            clear
-                            -> Clear entire playlist
+        repeatone off
+        -> Disable repeat current song
 
-                            repeat on
-                            -> Enable playlist repeat
+        repeatall on
+        -> Repeat entire playlist
 
-                            repeat off
-                            -> Disable playlist repeat
+        repeatall off
+        -> Disable repeat playlist
 
-                            repeatone on
-                            -> Repeat current song
+        playlist
+        -> Show playlist
 
-                            repeatone off
-                            -> Disable single-song repeat
+        help
+        -> Show all commands
 
-                            shuffle on
-                            -> Enable shuffle mode
+        exit
+        -> Exit Sonus
 
-                            shuffle off
-                            -> Disable shuffle mode
+        ==================================
+        Supported Formats:
+        MP3, WAV
 
-                            help
-                            -> Show command list
-
-                            exit
-                            -> Exit Sonus
-                            """);
+        """);
                 }
 
                 // EXIT
@@ -173,10 +170,10 @@ public class MainApp {
 
                             Song song = new Song(
                                     file.getAbsolutePath(),
-                                    removeExtension(file.getName()),
-                                    "Unknown",
+                                    MetadataExtractor.getTitle(file),
+                                    MetadataExtractor.getArtist(file),
                                     getFileExtension(file.getName()),
-                                    getAudioDuration(file)
+                                    MetadataExtractor.getDuration(file)
                             );
 
                             playlistManager.addSong(song);
@@ -216,10 +213,10 @@ public class MainApp {
 
                     Song song = new Song(
                             file.getAbsolutePath(),
-                            removeExtension(file.getName()),
-                            "Unknown",
+                            MetadataExtractor.getTitle(file),
+                            MetadataExtractor.getArtist(file),
                             getFileExtension(file.getName()),
-                            getAudioDuration(file)
+                            MetadataExtractor.getDuration(file)
                     );
 
                     playlistManager.addSong(song);
@@ -402,23 +399,5 @@ public class MainApp {
         return fileName.substring(dotIndex + 1).toLowerCase();
     }
 
-    // Get WAV duration
-    private static long getAudioDuration(File file) {
 
-        try {
-
-            AudioInputStream audioInputStream =
-                    AudioSystem.getAudioInputStream(file);
-
-            AudioFormat format = audioInputStream.getFormat();
-
-            long frames = audioInputStream.getFrameLength();
-
-            return (long) ((frames * 1000) / format.getFrameRate());
-
-        } catch (Exception e) {
-
-            return 0;
-        }
-    }
 }

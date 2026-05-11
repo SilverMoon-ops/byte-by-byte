@@ -141,4 +141,33 @@ public class JavaFXPlayerEngine {
 
         this.onSongFinished = onSongFinished;
     }
+
+    public double getCurrentTime() {
+
+        if (mediaPlayer == null) {
+            return 0;
+        }
+
+        return mediaPlayer.getCurrentTime().toSeconds();
+    }
+
+    public double getTotalDuration() {
+
+        if (mediaPlayer == null ||
+                mediaPlayer.getTotalDuration() == null) {
+
+            return 0;
+        }
+
+        return mediaPlayer.getTotalDuration().toSeconds();
+    }
+
+    public void seek(double seconds) {
+
+        if (mediaPlayer == null) {
+            return;
+        }
+
+        mediaPlayer.seek(javafx.util.Duration.seconds(seconds));
+    }
 }

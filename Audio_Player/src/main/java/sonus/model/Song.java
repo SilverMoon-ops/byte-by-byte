@@ -26,10 +26,12 @@ public String getArtist() { return artist; }
 public String getFormat() { return format; }
 public long getDuration() { return duration; }
 
-public String getFormattedDuration() {
-    long seconds = (duration / 1000) % 60;
-    long minutes = (duration / (1000 * 60)) % 60;
-    return String.format("%d:%02d", minutes, seconds);
+    public String getFormattedDuration() {
+
+        long minutes = duration / 60;
+        long seconds = duration % 60;
+
+        return String.format("%d:%02d", minutes, seconds);
     }
 
     @Override
