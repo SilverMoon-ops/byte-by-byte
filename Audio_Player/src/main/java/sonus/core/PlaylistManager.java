@@ -12,10 +12,12 @@ public class PlaylistManager {
 
     // Track Current Song position
     private int currentIndex;
+    private boolean repeatPlaylist;
 
     public PlaylistManager(){
         this.playlist = new ArrayList<>();
         this.currentIndex = -1; // no song selected initially
+        this.repeatPlaylist = false;
     }
 
     // add song to playlist
@@ -41,14 +43,41 @@ public class PlaylistManager {
         return playlist.get(currentIndex);
     }
 
-    // Move to next song
-    public Song nextSong(){
+    public void setRepeatPlaylist(boolean repeatPlaylist) {
+        this.repeatPlaylist = repeatPlaylist;
+    }
+    public boolean isRepeatPlaylist() {
+        return repeatPlaylist;
+    }
 
-        if(!hasNext()){
+
+    // Move to next song
+    public Song nextSong() {
+
+        if (playlist.isEmpty()) {
+            throw new IllegalStateException("Playlist is empty");
+        }
+
+        // Normal next
+        if (hasNext()) {
+
+            currentIndex++;
+
+        }
+
+        // Repeat playlist
+        else if (repeatPlaylist) {
+
+            currentIndex = 0;
+
+        }
+
+        // End reached
+        else {
+
             throw new IllegalStateException("No next song available");
         }
 
-        currentIndex++;
         return playlist.get(currentIndex);
     }
 
@@ -62,6 +91,7 @@ public class PlaylistManager {
         currentIndex--;
         return playlist.get(currentIndex);
     }
+
 
     // check if next song exists
     public boolean hasNext(){

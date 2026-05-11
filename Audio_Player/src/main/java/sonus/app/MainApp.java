@@ -18,8 +18,30 @@ public class MainApp {
 
         PlayerEngine engine = new PlayerEngine();
         PlaylistManager playlistManager = new PlaylistManager();
+        engine.setOnSongFinished(() -> {
 
-        System.out.println("Welcome to Sonus 🎧");
+            try {
+
+                if (playlistManager.hasNext()) {
+
+                    Song nextSong = playlistManager.nextSong();
+
+                    engine.load(nextSong);
+
+                    engine.play();
+
+                } else {
+
+                    System.out.println("End of playlist");
+                }
+
+            } catch (Exception e) {
+
+                System.out.println("Auto-play error: " + e.getMessage());
+            }
+        });
+
+        System.out.println("-------Welcome to Sonus 🎧-------");
         System.out.println("Type 'help' to see commands");
 
         while (true) {
@@ -158,6 +180,21 @@ public class MainApp {
                     );
 
                     playlistManager.addSong(song);
+                }
+
+                // REPEAT PLAYLIST
+                else if (input.equalsIgnoreCase("repeat on")) {
+
+                    playlistManager.setRepeatPlaylist(true);
+
+                    System.out.println("Repeat playlist enabled");
+                }
+
+                else if (input.equalsIgnoreCase("repeat off")) {
+
+                    playlistManager.setRepeatPlaylist(false);
+
+                    System.out.println("Repeat playlist disabled");
                 }
 
                 // PLAY
