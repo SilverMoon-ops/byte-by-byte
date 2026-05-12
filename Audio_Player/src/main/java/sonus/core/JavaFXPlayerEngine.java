@@ -170,4 +170,26 @@ public class JavaFXPlayerEngine {
 
         mediaPlayer.seek(javafx.util.Duration.seconds(seconds));
     }
+
+    public void setVolume(double volume) {
+
+        if (mediaPlayer == null) {
+            return;
+        }
+
+        // Clamp between 0 and 100
+        volume = Math.max(0, Math.min(volume, 100));
+
+        // JavaFX uses 0.0 to 1.0
+        mediaPlayer.setVolume(volume / 100.0);
+    }
+
+    public int getVolume() {
+
+        if (mediaPlayer == null) {
+            return 0;
+        }
+
+        return (int) (mediaPlayer.getVolume() * 100);
+    }
 }

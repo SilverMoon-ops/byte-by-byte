@@ -99,6 +99,12 @@ public class MainApp {
 
         playlist
         -> Show playlist
+        
+        volume <0-100>
+        -> Set playback volume
+        
+        status
+        -> Show player status
 
         help
         -> Show all commands
@@ -312,6 +318,63 @@ public class MainApp {
                     }
                 }
 
+                // STATUS
+                else if (input.equalsIgnoreCase("status")) {
+
+                    Song currentSong = playlistManager.getCurrentSong();
+
+                    if (currentSong == null) {
+
+                        System.out.println("No song loaded");
+                        continue;
+                    }
+
+                    double current = engine.getCurrentTime();
+                    double total = engine.getTotalDuration();
+
+                    long currentMinutes = (long) current / 60;
+                    long currentSeconds = (long) current % 60;
+
+                    long totalMinutes = (long) total / 60;
+                    long totalSeconds = (long) total % 60;
+
+                    System.out.println("\n======= SONUS STATUS =======");
+
+                    System.out.println("Song: " + currentSong);
+
+                    System.out.println("State: " + engine.getState());
+
+                    System.out.println(
+                            "Time: " +
+                                    String.format(
+                                            "%d:%02d / %d:%02d",
+                                            currentMinutes,
+                                            currentSeconds,
+                                            totalMinutes,
+                                            totalSeconds
+                                    )
+                    );
+
+                    System.out.println("Volume: " + engine.getVolume() + "%");
+
+                    System.out.println(
+                            "Shuffle: " +
+                                    (playlistManager.isShuffleEnabled() ? "ON" : "OFF")
+                    );
+
+                    System.out.println(
+                            "Repeat Playlist: " +
+                                    (playlistManager.isRepeatPlaylist() ? "ON" : "OFF")
+                    );
+
+                    System.out.println(
+                            "Repeat Single: " +
+                                    (playlistManager.isRepeatSingleSong() ? "ON" : "OFF")
+                    );
+
+                    System.out.println("============================\n");
+                }
+
                 // REPEAT PLAYLIST ON
                 else if (input.equalsIgnoreCase("repeat on")) {
 
@@ -354,6 +417,24 @@ public class MainApp {
                 else if (input.equalsIgnoreCase("shuffle off")) {
 
                     playlistManager.disableShuffle();
+                }
+
+                // VOLUME
+                else if (input.toLowerCase().startsWith("volume")) {
+
+                    String value = input.substring(6).trim();
+
+                    if (value.isEmpty()) {
+
+                        System.out.println("Usage: volume <0-100>");
+                        continue;
+                    }
+
+                    int volume = Integer.parseInt(value);
+
+                    engine.setVolume(volume);
+
+                    System.out.println("Volume set to " + volume + "%");
                 }
 
                 // PAUSE
