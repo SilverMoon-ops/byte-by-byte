@@ -12,3 +12,35 @@
 # Ignore temporary files
 *.log
 *.tmp
+
+# Ignore compiled binaries
+*.exe
+*.out
+*.o
+*.class
+
+# Ignore IDE / editor files
+.vscode/
+.idea/
+*.iml
+
+# Ignore build/output folders
+out/
+target/
+build/
+
+# Ignore OS junk
+.DS_Store
+Thumbs.db
+
+# Ignore temporary files
+*.log
+*.tmp
+
+# Ignore Java crash logs
+hs_err_pid*
+
+# Ignore packaged artifacts
+*.jar
+*.war
+*.ear
