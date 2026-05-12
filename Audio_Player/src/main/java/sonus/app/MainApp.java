@@ -1,15 +1,13 @@
 package sonus.app;
 
 import sonus.core.JavaFXPlayerEngine;
+import sonus.core.PlayerState;
 import sonus.core.PlaylistManager;
 import sonus.model.Song;
 import sonus.core.MetadataExtractor;
 
 import javafx.embed.swing.JFXPanel;
 
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 import java.io.File;
 import java.util.Scanner;
 
@@ -27,18 +25,35 @@ public class MainApp {
         // AUTO PLAY NEXT SONG
         engine.setOnSongFinished(() -> {
 
-            try {
+            javafx.application.Platform.runLater(() -> {
 
-                Song nextSong = playlistManager.nextSong();
+                try {
 
-                engine.load(nextSong);
+                    Song nextSong = playlistManager.nextSong();
 
-                engine.play();
+                    if (nextSong != null) {
 
-            } catch (Exception e) {
+                        engine.load(nextSong);
 
-                System.out.println("End of playlist");
-            }
+                        engine.play();
+
+                        System.out.println(
+                                "\n[Auto-play] Now playing: "
+                                        + nextSong.getTitle()
+                        );
+
+                        System.out.print("> ");
+                    }
+
+                } catch (Exception e) {
+
+                    System.out.println(
+                            "\nPlayback stopped: Reached end of playlist."
+                    );
+
+                    System.out.print("> ");
+                }
+            });
         });
 
         System.out.println("------- Welcome to Sonus 🎧 -------");
@@ -231,11 +246,19 @@ public class MainApp {
                 // PLAY
                 else if (input.equalsIgnoreCase("play")) {
 
+                    if (engine.getState() == PlayerState.PAUSED) {
+
+                        engine.play();
+
+                        continue;
+                    }
+
                     Song currentSong = playlistManager.getCurrentSong();
 
                     if (currentSong == null) {
 
                         System.out.println("Playlist is empty");
+
                         continue;
                     }
 
@@ -466,11 +489,7 @@ public class MainApp {
         scanner.close();
     }
 
-    // Remove file extension
-    private static String removeExtension(String filename) {
 
-        return filename.replaceFirst("[.][^.]+$", "");
-    }
     // Get file extension
     private static String getFileExtension(String fileName) {
 
