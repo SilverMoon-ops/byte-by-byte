@@ -18,6 +18,8 @@ public class JavaFXPlayerEngine {
 
     private Runnable onSongFinished;
 
+    private double volume = 100;
+
     // LOAD SONG
     public void load(Song song) {
 
@@ -44,6 +46,8 @@ public class JavaFXPlayerEngine {
             Media media = new Media(file.toURI().toString());
 
             mediaPlayer = new MediaPlayer(media);
+
+            mediaPlayer.setVolume(volume / 100.0);
 
             // Song completion callback
             mediaPlayer.setOnEndOfMedia(() -> {
@@ -173,23 +177,19 @@ public class JavaFXPlayerEngine {
 
     public void setVolume(double volume) {
 
-        if (mediaPlayer == null) {
-            return;
-        }
-
         // Clamp between 0 and 100
         volume = Math.max(0, Math.min(volume, 100));
 
-        // JavaFX uses 0.0 to 1.0
-        mediaPlayer.setVolume(volume / 100.0);
+        this.volume = volume;
+
+        if (mediaPlayer != null) {
+
+            mediaPlayer.setVolume(volume / 100.0);
+        }
     }
 
     public int getVolume() {
 
-        if (mediaPlayer == null) {
-            return 0;
-        }
-
-        return (int) (mediaPlayer.getVolume() * 100);
+        return (int) volume;
     }
 }

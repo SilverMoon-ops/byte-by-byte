@@ -39,7 +39,7 @@ public class PlaylistManager {
         if (currentIndex == -1){
             currentIndex = 0;
         }
-        System.out.println("Added to playlist: " +song);
+
     }
     public void removeSong(int index) {
 

@@ -1,35 +1,48 @@
 package sonus.app;
 
-import sonus.core.JavaFXPlayerEngine;
-import sonus.core.PlayerState;
-import sonus.core.PlaylistManager;
-import sonus.model.Song;
-import sonus.core.MetadataExtractor;
-
+import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
 
-import java.io.File;
+import sonus.command.CommandHandler;
+import sonus.core.JavaFXPlayerEngine;
+import sonus.service.PlaylistService;
+import sonus.core.PlaylistManager;
+import sonus.model.Song;
+
 import java.util.Scanner;
 
 public class MainApp {
 
     public static void main(String[] args) {
 
+        // Initialize JavaFX Toolkit
         new JFXPanel();
 
         Scanner scanner = new Scanner(System.in);
 
         JavaFXPlayerEngine engine = new JavaFXPlayerEngine();
+
         PlaylistManager playlistManager = new PlaylistManager();
 
-        // AUTO PLAY NEXT SONG
+        PlaylistService playlistService =
+                new PlaylistService(playlistManager);
+
+        CommandHandler commandHandler =
+                new CommandHandler(
+                        engine,
+                        playlistManager,
+                        playlistService
+                );
+
+        // Auto play next song
         engine.setOnSongFinished(() -> {
 
-            javafx.application.Platform.runLater(() -> {
+            Platform.runLater(() -> {
 
                 try {
 
-                    Song nextSong = playlistManager.nextSong();
+                    Song nextSong =
+                            playlistManager.nextSong();
 
                     if (nextSong != null) {
 
@@ -38,8 +51,8 @@ public class MainApp {
                         engine.play();
 
                         System.out.println(
-                                "\n[Auto-play] Now playing: "
-                                        + nextSong.getTitle()
+                                "\n[Auto-play] Now playing: " +
+                                        nextSong.getTitle()
                         );
 
                         System.out.print("> ");
@@ -48,7 +61,7 @@ public class MainApp {
                 } catch (Exception e) {
 
                     System.out.println(
-                            "\nPlayback stopped: Reached end of playlist."
+                            "\nReached end of playlist"
                     );
 
                     System.out.print("> ");
@@ -56,451 +69,59 @@ public class MainApp {
             });
         });
 
-        System.out.println("------- Welcome to Sonus 🎧 -------");
-        System.out.println("Type 'help' to see commands");
+        // Welcome Banner
+        System.out.println(
+                "-------- Welcome to Sonus 🎧 --------"
+        );
 
+        System.out.println(
+                "Type 'help' to see commands"
+        );
+
+        // Main Loop
         while (true) {
 
             System.out.print("> ");
+
             String input = scanner.nextLine().trim();
 
-            try {
+            // Skip empty input
+            if (input.isEmpty()) {
+                continue;
+            }
 
-                // HELP
-                if (input.equalsIgnoreCase("help")) {
+            // Exit
+            if (input.equalsIgnoreCase("exit")) {
 
-                    System.out.println("""
+                try {
 
-        ========= SONUS COMMANDS =========
-
-        add <filepath>
-        -> Add a single audio file
-
-        folder <folderpath>
-        -> Load supported audio files from folder
-
-        play
-        -> Play current song
-
-        pause
-        -> Pause playback
-
-        stop
-        -> Stop playback
-
-        next
-        -> Play next song
-
-        prev
-        -> Play previous song
-
-        shuffle on
-        -> Enable shuffle mode
-
-        shuffle off
-        -> Disable shuffle mode
-
-        repeatone on
-        -> Repeat current song
-
-        repeatone off
-        -> Disable repeat current song
-
-        repeatall on
-        -> Repeat entire playlist
-
-        repeatall off
-        -> Disable repeat playlist
-
-        playlist
-        -> Show playlist
-        
-        volume <0-100>
-        -> Set playback volume
-        
-        status
-        -> Show player status
-
-        help
-        -> Show all commands
-
-        exit
-        -> Exit Sonus
-
-        ==================================
-        Supported Formats:
-        MP3, WAV
-
-        """);
-                }
-
-                // EXIT
-                else if (input.equalsIgnoreCase("exit")) {
-
-                    System.out.println("Goodbye!");
-                    break;
-                }
-
-                // LOAD FOLDER
-                else if (input.toLowerCase().startsWith("folder")) {
-
-                    String folderPath = input.substring(6).trim();
-
-                    if (folderPath.isEmpty()) {
-
-                        System.out.println("Usage: folder <folderpath>");
-                        continue;
+                    if (engine.getState() != null) {
+                        engine.stop();
                     }
 
-                    // Remove quotes
-                    if ((folderPath.startsWith("\"") && folderPath.endsWith("\"")) ||
-                            (folderPath.startsWith("'") && folderPath.endsWith("'"))) {
-
-                        folderPath = folderPath.substring(1, folderPath.length() - 1);
-                    }
-
-                    File folder = new File(folderPath);
-
-                    if (!folder.exists() || !folder.isDirectory()) {
-
-                        System.out.println("Invalid folder");
-                        continue;
-                    }
-
-                    File[] files = folder.listFiles();
-
-                    if (files == null || files.length == 0) {
-
-                        System.out.println("Folder is empty");
-                        continue;
-                    }
-
-                    int addedCount = 0;
-
-                    for (File file : files) {
-
-                        String lowerName = file.getName().toLowerCase();
-
-                        if (
-                                file.isFile() &&
-                                        (
-                                                lowerName.endsWith(".wav") ||
-                                                        lowerName.endsWith(".mp3")
-                                        )
-                        ) {
-
-                            Song song = new Song(
-                                    file.getAbsolutePath(),
-                                    MetadataExtractor.getTitle(file),
-                                    MetadataExtractor.getArtist(file),
-                                    getFileExtension(file.getName()),
-                                    MetadataExtractor.getDuration(file)
-                            );
-
-                            playlistManager.addSong(song);
-
-                            addedCount++;
-                        }
-                    }
-
-                    System.out.println("Added " + addedCount + " song(s) to playlist");
+                } catch (Exception ignored) {
                 }
 
-                // ADD SINGLE SONG
-                else if (input.toLowerCase().startsWith("add")) {
+                Platform.exit();
 
-                    String filePath = input.substring(3).trim();
+                scanner.close();
 
-                    if (filePath.isEmpty()) {
+                System.out.println("Goodbye from Sonus 👋");
 
-                        System.out.println("Usage: add <filepath>");
-                        continue;
-                    }
+                break;
+            }
 
-                    // Remove quotes
-                    if ((filePath.startsWith("\"") && filePath.endsWith("\"")) ||
-                            (filePath.startsWith("'") && filePath.endsWith("'"))) {
+            // Let command handler process commands
+            boolean handled =
+                    commandHandler.handle(input);
 
-                        filePath = filePath.substring(1, filePath.length() - 1);
-                    }
+            // Unknown command fallback
+            if (!handled) {
 
-                    File file = new File(filePath);
-
-                    if (!file.exists()) {
-
-                        System.out.println("File not found");
-                        continue;
-                    }
-
-                    Song song = new Song(
-                            file.getAbsolutePath(),
-                            MetadataExtractor.getTitle(file),
-                            MetadataExtractor.getArtist(file),
-                            getFileExtension(file.getName()),
-                            MetadataExtractor.getDuration(file)
-                    );
-
-                    playlistManager.addSong(song);
-                }
-
-                // PLAY
-                else if (input.equalsIgnoreCase("play")) {
-
-                    if (engine.getState() == PlayerState.PAUSED) {
-
-                        engine.play();
-
-                        continue;
-                    }
-
-                    Song currentSong = playlistManager.getCurrentSong();
-
-                    if (currentSong == null) {
-
-                        System.out.println("Playlist is empty");
-
-                        continue;
-                    }
-
-                    engine.load(currentSong);
-
-                    engine.play();
-                }
-
-                // NEXT
-                else if (input.equalsIgnoreCase("next")) {
-
-                    Song nextSong = playlistManager.nextSong();
-
-                    engine.load(nextSong);
-
-                    engine.play();
-                }
-
-                // PREVIOUS
-                else if (input.equalsIgnoreCase("prev")) {
-
-                    Song previousSong = playlistManager.previousSong();
-
-                    engine.load(previousSong);
-
-                    engine.play();
-                }
-
-                // SHOW PLAYLIST
-                else if (input.equalsIgnoreCase("playlist")) {
-
-                    playlistManager.showPlaylist();
-                }
-
-                // REMOVE SONG
-                else if (input.toLowerCase().startsWith("remove")) {
-
-                    String value = input.substring(6).trim();
-
-                    if (value.isEmpty()) {
-
-                        System.out.println("Usage: remove <index>");
-                        continue;
-                    }
-
-                    int index = Integer.parseInt(value);
-
-                    playlistManager.removeSong(index);
-                }
-
-                // CLEAR PLAYLIST
-                else if (input.equalsIgnoreCase("clear")) {
-
-                    playlistManager.clearPlaylist();
-                }
-
-                // CURRENT SONG INFO
-                else if (input.equalsIgnoreCase("current")) {
-
-                    Song currentSong = playlistManager.getCurrentSong();
-
-                    if (currentSong == null) {
-
-                        System.out.println("No song selected");
-
-                    } else {
-
-                        System.out.println("Current Song: " + currentSong);
-
-                        System.out.println("Player State: " + engine.getState());
-
-                        System.out.println("Shuffle: " +
-                                (playlistManager.isShuffleEnabled() ? "ON" : "OFF"));
-
-                        System.out.println("Repeat Playlist: " +
-                                (playlistManager.isRepeatPlaylist() ? "ON" : "OFF"));
-
-                        System.out.println("Repeat Single: " +
-                                (playlistManager.isRepeatSingleSong() ? "ON" : "OFF"));
-                    }
-                }
-
-                // STATUS
-                else if (input.equalsIgnoreCase("status")) {
-
-                    Song currentSong = playlistManager.getCurrentSong();
-
-                    if (currentSong == null) {
-
-                        System.out.println("No song loaded");
-                        continue;
-                    }
-
-                    double current = engine.getCurrentTime();
-                    double total = engine.getTotalDuration();
-
-                    long currentMinutes = (long) current / 60;
-                    long currentSeconds = (long) current % 60;
-
-                    long totalMinutes = (long) total / 60;
-                    long totalSeconds = (long) total % 60;
-
-                    System.out.println("\n======= SONUS STATUS =======");
-
-                    System.out.println("Song: " + currentSong);
-
-                    System.out.println("State: " + engine.getState());
-
-                    System.out.println(
-                            "Time: " +
-                                    String.format(
-                                            "%d:%02d / %d:%02d",
-                                            currentMinutes,
-                                            currentSeconds,
-                                            totalMinutes,
-                                            totalSeconds
-                                    )
-                    );
-
-                    System.out.println("Volume: " + engine.getVolume() + "%");
-
-                    System.out.println(
-                            "Shuffle: " +
-                                    (playlistManager.isShuffleEnabled() ? "ON" : "OFF")
-                    );
-
-                    System.out.println(
-                            "Repeat Playlist: " +
-                                    (playlistManager.isRepeatPlaylist() ? "ON" : "OFF")
-                    );
-
-                    System.out.println(
-                            "Repeat Single: " +
-                                    (playlistManager.isRepeatSingleSong() ? "ON" : "OFF")
-                    );
-
-                    System.out.println("============================\n");
-                }
-
-                // REPEAT PLAYLIST ON
-                else if (input.equalsIgnoreCase("repeat on")) {
-
-                    playlistManager.setRepeatPlaylist(true);
-
-                    System.out.println("Repeat playlist enabled");
-                }
-
-                // REPEAT PLAYLIST OFF
-                else if (input.equalsIgnoreCase("repeat off")) {
-
-                    playlistManager.setRepeatPlaylist(false);
-
-                    System.out.println("Repeat playlist disabled");
-                }
-
-                // REPEAT SINGLE SONG ON
-                else if (input.equalsIgnoreCase("repeatone on")) {
-
-                    playlistManager.setRepeatSingleSong(true);
-
-                    System.out.println("Repeat single song enabled");
-                }
-
-                // REPEAT SINGLE SONG OFF
-                else if (input.equalsIgnoreCase("repeatone off")) {
-
-                    playlistManager.setRepeatSingleSong(false);
-
-                    System.out.println("Repeat single song disabled");
-                }
-
-                // SHUFFLE ON
-                else if (input.equalsIgnoreCase("shuffle on")) {
-
-                    playlistManager.enableShuffle();
-                }
-
-                // SHUFFLE OFF
-                else if (input.equalsIgnoreCase("shuffle off")) {
-
-                    playlistManager.disableShuffle();
-                }
-
-                // VOLUME
-                else if (input.toLowerCase().startsWith("volume")) {
-
-                    String value = input.substring(6).trim();
-
-                    if (value.isEmpty()) {
-
-                        System.out.println("Usage: volume <0-100>");
-                        continue;
-                    }
-
-                    int volume = Integer.parseInt(value);
-
-                    // Clamp
-                    volume = Math.max(0, Math.min(volume, 100));
-
-                    engine.setVolume(volume);
-
-                    System.out.println("Volume set to " + volume + "%");
-                }
-
-                // PAUSE
-                else if (input.equalsIgnoreCase("pause")) {
-
-                    engine.pause();
-                }
-
-                // STOP
-                else if (input.equalsIgnoreCase("stop")) {
-
-                    engine.stop();
-                }
-
-                else {
-
-                    System.out.println("Unknown command");
-                }
-
-            } catch (Exception e) {
-
-                System.out.println("Error: " + e.getMessage());
+                System.out.println(
+                        "Unknown command. Type 'help'"
+                );
             }
         }
-
-        scanner.close();
     }
-
-
-    // Get file extension
-    private static String getFileExtension(String fileName) {
-
-        int dotIndex = fileName.lastIndexOf('.');
-
-        if (dotIndex == -1) {
-            return "unknown";
-        }
-
-        return fileName.substring(dotIndex + 1).toLowerCase();
-    }
-
-
 }

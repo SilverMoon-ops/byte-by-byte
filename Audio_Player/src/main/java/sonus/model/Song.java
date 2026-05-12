@@ -28,10 +28,17 @@ public long getDuration() { return duration; }
 
     public String getFormattedDuration() {
 
-        long minutes = duration / 60;
-        long seconds = duration % 60;
+        long totalSeconds = duration / 1000;
 
-        return String.format("%d:%02d", minutes, seconds);
+        long minutes = totalSeconds / 60;
+
+        long seconds = totalSeconds % 60;
+
+        return String.format(
+                "%d:%02d",
+                minutes,
+                seconds
+        );
     }
 
     @Override
