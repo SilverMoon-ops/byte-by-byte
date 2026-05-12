@@ -432,6 +432,9 @@ public class MainApp {
 
                     int volume = Integer.parseInt(value);
 
+                    // Clamp
+                    volume = Math.max(0, Math.min(volume, 100));
+
                     engine.setVolume(volume);
 
                     System.out.println("Volume set to " + volume + "%");
