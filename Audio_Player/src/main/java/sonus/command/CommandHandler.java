@@ -1,10 +1,20 @@
 package sonus.command;
 
+import sonus.command.playback.PauseCommand;
+import sonus.command.playback.PlayCommand;
+import sonus.command.playback.StopCommand;
+import sonus.command.system.HelpCommand;
+import sonus.command.system.StatusCommand;
+
 import sonus.core.JavaFXPlayerEngine;
-import sonus.core.PlayerState;
 import sonus.core.PlaylistManager;
+
 import sonus.model.Song;
+
 import sonus.service.PlaylistService;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class CommandHandler {
 
@@ -13,6 +23,8 @@ public class CommandHandler {
     private final PlaylistManager playlistManager;
 
     private final PlaylistService playlistService;
+
+    private final List<Command> commands;
 
     public CommandHandler(
             JavaFXPlayerEngine engine,
@@ -25,190 +37,42 @@ public class CommandHandler {
         this.playlistManager = playlistManager;
 
         this.playlistService = playlistService;
+
+        this.commands = new ArrayList<>();
+
+        commands.add(new HelpCommand());
+
+        commands.add(
+                new PlayCommand(
+                        engine,
+                        playlistManager
+                )
+        );
+
+        commands.add(
+                new PauseCommand(engine)
+        );
+
+        commands.add(
+                new StopCommand(engine)
+        );
+
+        commands.add(
+                new StatusCommand(
+                        engine,
+                        playlistManager
+                )
+        );
     }
+
     public boolean handle(String input) {
 
-        // HELP
-        if (input.equalsIgnoreCase("help")) {
+        // Modular commands
+        for (Command command : commands) {
 
-            System.out.println("\n======= SONUS COMMANDS =======");
-
-            System.out.println("play              -> Play current song");
-
-            System.out.println("pause             -> Pause playback");
-
-            System.out.println("stop              -> Stop playback");
-
-            System.out.println("next              -> Next song");
-
-            System.out.println("previous          -> Previous song");
-
-            System.out.println("status            -> Show player status");
-
-            System.out.println("volume <0-100>    -> Set volume");
-
-            System.out.println("playlist          -> Show playlist");
-
-            System.out.println("shuffle           -> Toggle shuffle");
-
-            System.out.println("repeatplaylist    -> Toggle repeat playlist");
-
-            System.out.println("repeatsingle      -> Toggle repeat current song");
-
-            System.out.println("current           -> Show current song");
-
-            System.out.println("exit              -> Exit Sonus");
-
-            System.out.println("================================\n");
-
-            return true;
-        }
-
-        // STATUS
-        if (input.equalsIgnoreCase("status")) {
-
-            Song currentSong =
-                    playlistManager.getCurrentSong();
-
-            if (currentSong == null) {
-
-                System.out.println("No song loaded");
-
+            if (command.execute(input)) {
                 return true;
             }
-
-            double current = engine.getCurrentTime();
-
-            double total = engine.getTotalDuration();
-
-            long currentMinutes = (long) current / 60;
-
-            long currentSeconds = (long) current % 60;
-
-            long totalMinutes = (long) total / 60;
-
-            long totalSeconds = (long) total % 60;
-
-            System.out.println("\n======= SONUS STATUS =======");
-
-            System.out.println(
-                    "Song: " + currentSong
-            );
-
-            System.out.println(
-                    "State: " + engine.getState()
-            );
-
-            System.out.println(
-                    "Time: " +
-                            String.format(
-                                    "%d:%02d / %d:%02d",
-                                    currentMinutes,
-                                    currentSeconds,
-                                    totalMinutes,
-                                    totalSeconds
-                            )
-            );
-
-            System.out.println(
-                    "Volume: " +
-                            engine.getVolume() + "%"
-            );
-
-            System.out.println(
-                    "Shuffle: " +
-                            (playlistManager.isShuffleEnabled()
-                                    ? "ON"
-                                    : "OFF")
-            );
-
-            System.out.println(
-                    "Repeat Playlist: " +
-                            (playlistManager.isRepeatPlaylist()
-                                    ? "ON"
-                                    : "OFF")
-            );
-
-            System.out.println(
-                    "Repeat Single: " +
-                            (playlistManager.isRepeatSingleSong()
-                                    ? "ON"
-                                    : "OFF")
-            );
-
-            System.out.println("============================\n");
-
-            return true;
-        }
-
-        // PLAY
-        if (input.equalsIgnoreCase("play")) {
-
-            Song currentSong =
-                    playlistManager.getCurrentSong();
-
-            if (currentSong == null) {
-
-                System.out.println("Playlist is empty");
-
-                return true;
-            }
-
-            try {
-
-                if (engine.getState() == PlayerState.PAUSED) {
-
-                    engine.play();
-
-                } else {
-
-                    engine.load(currentSong);
-
-                    engine.play();
-                }
-
-            } catch (Exception e) {
-
-                System.out.println(
-                        "Error: " + e.getMessage()
-                );
-            }
-
-            return true;
-        }
-
-        // PAUSE
-        if (input.equalsIgnoreCase("pause")) {
-
-            try {
-
-                engine.pause();
-
-            } catch (Exception e) {
-
-                System.out.println(
-                        "Error: " + e.getMessage()
-                );
-            }
-
-            return true;
-        }
-
-        // STOP
-        if (input.equalsIgnoreCase("stop")) {
-
-            try {
-
-                engine.stop();
-
-            } catch (Exception e) {
-
-                System.out.println(
-                        "Error: " + e.getMessage()
-                );
-            }
-
-            return true;
         }
 
         // CURRENT SONG
@@ -219,12 +83,15 @@ public class CommandHandler {
 
             if (currentSong == null) {
 
-                System.out.println("No current song");
+                System.out.println(
+                        "No current song"
+                );
 
             } else {
 
                 System.out.println(
-                        "Current Song: " + currentSong
+                        "Current Song: " +
+                                currentSong
                 );
             }
 
@@ -239,14 +106,21 @@ public class CommandHandler {
                 String value =
                         input.substring(7).trim();
 
-                int volume = Integer.parseInt(value);
+                int volume =
+                        Integer.parseInt(value);
 
-                volume = Math.max(0, Math.min(100, volume));
+                volume =
+                        Math.max(
+                                0,
+                                Math.min(100, volume)
+                        );
 
                 engine.setVolume(volume);
 
                 System.out.println(
-                        "Volume set to " + volume + "%"
+                        "Volume set to " +
+                                volume +
+                                "%"
                 );
 
             } catch (NumberFormatException e) {
@@ -258,13 +132,15 @@ public class CommandHandler {
             } catch (Exception e) {
 
                 System.out.println(
-                        "Error: " + e.getMessage()
+                        "Error: " +
+                                e.getMessage()
                 );
             }
 
             return true;
         }
 
+        // FOLDER
         if (input.toLowerCase().startsWith("folder ")) {
 
             try {
@@ -272,7 +148,6 @@ public class CommandHandler {
                 String folderPath =
                         input.substring(7).trim();
 
-                // Remove quotes
                 if ((folderPath.startsWith("\"") &&
                         folderPath.endsWith("\"")) ||
 
@@ -287,7 +162,9 @@ public class CommandHandler {
                 }
 
                 int addedCount =
-                        playlistService.addFolder(folderPath);
+                        playlistService.addFolder(
+                                folderPath
+                        );
 
                 System.out.println(
                         "Added " +
@@ -298,15 +175,15 @@ public class CommandHandler {
             } catch (Exception e) {
 
                 System.out.println(
-                        "Error: " + e.getMessage()
+                        "Error: " +
+                                e.getMessage()
                 );
             }
 
             return true;
         }
 
-        // PLAYLIST COMMAND
-
+        // PLAYLIST
         if (input.equalsIgnoreCase("playlist")) {
 
             playlistManager.showPlaylist();
@@ -314,8 +191,7 @@ public class CommandHandler {
             return true;
         }
 
-        // NEXT COMMAND
-
+        // NEXT
         if (input.equalsIgnoreCase("next")) {
 
             try {
@@ -330,15 +206,15 @@ public class CommandHandler {
             } catch (Exception e) {
 
                 System.out.println(
-                        "Error: " + e.getMessage()
+                        "Error: " +
+                                e.getMessage()
                 );
             }
 
             return true;
         }
 
-        // PREVIOUS COMMAND
-
+        // PREVIOUS
         if (input.equalsIgnoreCase("previous")) {
 
             try {
@@ -353,15 +229,15 @@ public class CommandHandler {
             } catch (Exception e) {
 
                 System.out.println(
-                        "Error: " + e.getMessage()
+                        "Error: " +
+                                e.getMessage()
                 );
             }
 
             return true;
         }
 
-        // SHUFFLE COMMAND
-
+        // SHUFFLE
         if (input.equalsIgnoreCase("shuffle")) {
 
             if (playlistManager.isShuffleEnabled()) {
@@ -376,14 +252,15 @@ public class CommandHandler {
             return true;
         }
 
-        // REPEAT PLAYLIST COMMAND
-
+        // REPEAT PLAYLIST
         if (input.equalsIgnoreCase("repeatplaylist")) {
 
             boolean enabled =
                     !playlistManager.isRepeatPlaylist();
 
-            playlistManager.setRepeatPlaylist(enabled);
+            playlistManager.setRepeatPlaylist(
+                    enabled
+            );
 
             System.out.println(
                     "Repeat Playlist: " +
@@ -393,8 +270,7 @@ public class CommandHandler {
             return true;
         }
 
-        // REMOVE COMMAND
-
+        // REMOVE
         if (input.toLowerCase().startsWith("remove ")) {
 
             try {
@@ -416,7 +292,8 @@ public class CommandHandler {
             } catch (Exception e) {
 
                 System.out.println(
-                        "Error: " + e.getMessage()
+                        "Error: " +
+                                e.getMessage()
                 );
             }
 
@@ -426,4 +303,3 @@ public class CommandHandler {
         return false;
     }
 }
-
