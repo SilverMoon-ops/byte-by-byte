@@ -5,14 +5,19 @@ import sonus.command.playback.PlayCommand;
 import sonus.command.playback.StopCommand;
 import sonus.command.system.HelpCommand;
 import sonus.command.system.StatusCommand;
+import sonus.command.playlist.ShuffleCommand;
+import sonus.command.playlist.RepeatCommand;
+import sonus.command.playlist.RepeatSingleCommand;
+import sonus.command.playlist.FolderCommand;
+import sonus.command.playlist.AddSongCommand;
+import sonus.command.playlist.SeekCommand;
+import sonus.command.playback.VolumeCommand;
+
 
 import sonus.core.JavaFXPlayerEngine;
 import sonus.core.PlaylistManager;
-
 import sonus.model.Song;
-
 import sonus.service.PlaylistService;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,6 +55,44 @@ public class CommandHandler {
         );
 
         commands.add(
+                new ShuffleCommand(
+                        playlistManager
+                )
+        );
+
+        commands.add(
+                new RepeatCommand(
+                        playlistManager
+                )
+        );
+
+        commands.add(
+                new RepeatSingleCommand(
+                        playlistManager
+                )
+        );
+
+        commands.add(
+                new FolderCommand(
+                        playlistService
+                )
+        );
+
+        commands.add(
+                new AddSongCommand(
+                        playlistService
+                )
+        );
+
+        commands.add(
+                new SeekCommand(engine)
+        );
+
+        commands.add(
+                new VolumeCommand(engine)
+        );
+
+        commands.add(
                 new PauseCommand(engine)
         );
 
@@ -67,7 +110,27 @@ public class CommandHandler {
 
     public boolean handle(String input) {
 
-        // Modular commands
+        // COMMAND ALIASES
+
+        switch (input.toLowerCase()) {
+
+            case "p" -> input = "play";
+
+            case "ps" -> input = "pause";
+
+            case "s" -> input = "stop";
+
+            case "n" -> input = "next";
+
+            case "b" -> input = "previous";
+
+            case "pl" -> input = "playlist";
+
+            case "c" -> input = "current";
+
+            case "h" -> input = "help";
+        }
+
         for (Command command : commands) {
 
             if (command.execute(input)) {
@@ -92,91 +155,6 @@ public class CommandHandler {
                 System.out.println(
                         "Current Song: " +
                                 currentSong
-                );
-            }
-
-            return true;
-        }
-
-        // VOLUME
-        if (input.toLowerCase().startsWith("volume ")) {
-
-            try {
-
-                String value =
-                        input.substring(7).trim();
-
-                int volume =
-                        Integer.parseInt(value);
-
-                volume =
-                        Math.max(
-                                0,
-                                Math.min(100, volume)
-                        );
-
-                engine.setVolume(volume);
-
-                System.out.println(
-                        "Volume set to " +
-                                volume +
-                                "%"
-                );
-
-            } catch (NumberFormatException e) {
-
-                System.out.println(
-                        "Invalid volume number"
-                );
-
-            } catch (Exception e) {
-
-                System.out.println(
-                        "Error: " +
-                                e.getMessage()
-                );
-            }
-
-            return true;
-        }
-
-        // FOLDER
-        if (input.toLowerCase().startsWith("folder ")) {
-
-            try {
-
-                String folderPath =
-                        input.substring(7).trim();
-
-                if ((folderPath.startsWith("\"") &&
-                        folderPath.endsWith("\"")) ||
-
-                        (folderPath.startsWith("'") &&
-                                folderPath.endsWith("'"))) {
-
-                    folderPath =
-                            folderPath.substring(
-                                    1,
-                                    folderPath.length() - 1
-                            );
-                }
-
-                int addedCount =
-                        playlistService.addFolder(
-                                folderPath
-                        );
-
-                System.out.println(
-                        "Added " +
-                                addedCount +
-                                " song(s) to playlist"
-                );
-
-            } catch (Exception e) {
-
-                System.out.println(
-                        "Error: " +
-                                e.getMessage()
                 );
             }
 
@@ -237,34 +215,17 @@ public class CommandHandler {
             return true;
         }
 
-        // SHUFFLE
-        if (input.equalsIgnoreCase("shuffle")) {
 
-            if (playlistManager.isShuffleEnabled()) {
 
-                playlistManager.disableShuffle();
 
-            } else {
+        // CLEAR PLAYLIST
 
-                playlistManager.enableShuffle();
-            }
+        if (input.equalsIgnoreCase("clear")) {
 
-            return true;
-        }
-
-        // REPEAT PLAYLIST
-        if (input.equalsIgnoreCase("repeatplaylist")) {
-
-            boolean enabled =
-                    !playlistManager.isRepeatPlaylist();
-
-            playlistManager.setRepeatPlaylist(
-                    enabled
-            );
+            playlistManager.clearPlaylist();
 
             System.out.println(
-                    "Repeat Playlist: " +
-                            (enabled ? "ON" : "OFF")
+                    "Playlist cleared"
             );
 
             return true;

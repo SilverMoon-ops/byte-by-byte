@@ -12,63 +12,43 @@ public class HelpCommand implements Command {
         }
 
         System.out.println(
-                "\n======= SONUS COMMANDS ======="
+                "\n--- Aliases ---"
         );
 
         System.out.println(
-                "play              -> Play current song"
+                "p  -> play"
         );
 
         System.out.println(
-                "pause             -> Pause playback"
+                "ps -> pause"
         );
 
         System.out.println(
-                "stop              -> Stop playback"
+                "s  -> stop"
         );
 
         System.out.println(
-                "next              -> Next song"
+                "n  -> next"
         );
 
         System.out.println(
-                "previous          -> Previous song"
+                "b  -> previous"
         );
 
         System.out.println(
-                "status            -> Show player status"
+                "pl -> playlist"
         );
 
         System.out.println(
-                "volume <0-100>    -> Set volume"
+                "c  -> current"
         );
 
         System.out.println(
-                "playlist          -> Show playlist"
+                "repeatsingle on/off -> Repeat current song"
         );
 
         System.out.println(
-                "shuffle           -> Toggle shuffle"
-        );
-
-        System.out.println(
-                "repeatplaylist    -> Toggle repeat playlist"
-        );
-
-        System.out.println(
-                "repeatsingle      -> Toggle repeat current song"
-        );
-
-        System.out.println(
-                "current           -> Show current song"
-        );
-
-        System.out.println(
-                "exit              -> Exit Sonus"
-        );
-
-        System.out.println(
-                "================================\n"
+                "h  -> help"
         );
 
         return true;

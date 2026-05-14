@@ -78,12 +78,6 @@ public class PlaylistManager {
         playlist.clear();
 
         currentIndex = -1;
-
-        shuffleOrder.clear();
-
-        shuffleIndex = 0;
-
-        System.out.println("Playlist cleared");
     }
 
     // get current song
@@ -224,6 +218,9 @@ public class PlaylistManager {
 
         return playlist.get(currentIndex);
     }
+
+
+
 
     // Move to previous song
     public Song previousSong() {
