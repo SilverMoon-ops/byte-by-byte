@@ -2,13 +2,21 @@ package sonus.core;
 
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
+import sonus.core.AudioEngine;
 
 import sonus.exception.InvalidOperationException;
 import sonus.model.Song;
 
 import java.io.File;
 
-public class JavaFXPlayerEngine {
+public class JavaFXPlayerEngine implements AudioEngine {
+
+    private Timeline progressTimeline;
+
+    private Runnable onProgressUpdate;
 
     private PlayerState state = PlayerState.STOPPED;
 
@@ -19,6 +27,48 @@ public class JavaFXPlayerEngine {
     private Runnable onSongFinished;
 
     private double volume = 100;
+
+    private void startProgressUpdates() {
+
+        stopProgressUpdates();
+
+        progressTimeline = new Timeline(
+                new KeyFrame(
+                        Duration.millis(500),
+                        event -> {
+
+                            if (onProgressUpdate != null) {
+
+                                onProgressUpdate.run();
+                            }
+                        }
+                )
+        );
+
+        progressTimeline.setCycleCount(
+                Timeline.INDEFINITE
+        );
+
+        progressTimeline.play();
+    }
+
+    private void stopProgressUpdates() {
+
+        if (progressTimeline != null) {
+
+            progressTimeline.stop();
+        }
+    }
+
+
+    public void setOnProgressUpdate(
+            Runnable onProgressUpdate
+    ) {
+
+        this.onProgressUpdate =
+                onProgressUpdate;
+    }
+
 
     // LOAD SONG
     public void load(Song song) {
@@ -75,57 +125,98 @@ public class JavaFXPlayerEngine {
     // PLAY
     public void play() {
 
-        if (currentSong == null) {
+        if (mediaPlayer == null ||
+                currentSong == null) {
 
-            throw new InvalidOperationException("No song loaded");
+            throw new InvalidOperationException(
+                    "No song loaded"
+            );
         }
 
         if (state == PlayerState.PLAYING) {
 
-            throw new InvalidOperationException(
+            System.out.println(
                     "Song is already playing"
             );
+
+            return;
         }
 
         mediaPlayer.play();
 
+        startProgressUpdates();
+
         state = PlayerState.PLAYING;
 
-        System.out.println("Playing: " + currentSong);
+        System.out.println(
+                "Playing: " + currentSong
+        );
     }
 
     // PAUSE
     public void pause() {
 
+        if (mediaPlayer == null ||
+                currentSong == null) {
+
+            System.out.println(
+                    "No song loaded"
+            );
+
+            return;
+        }
+
         if (state != PlayerState.PLAYING) {
 
-            throw new InvalidOperationException(
+            System.out.println(
                     "No song is playing"
             );
+
+            return;
         }
 
         mediaPlayer.pause();
 
+        stopProgressUpdates();
+
         state = PlayerState.PAUSED;
 
-        System.out.println("Paused: " + currentSong);
+        System.out.println(
+                "Paused: " + currentSong
+        );
     }
 
     // STOP
     public void stop() {
 
+        if (mediaPlayer == null ||
+                currentSong == null) {
+
+            System.out.println(
+                    "No song loaded"
+            );
+
+            return;
+        }
+
         if (state == PlayerState.STOPPED) {
 
-            throw new InvalidOperationException(
+            System.out.println(
                     "Player is already stopped"
             );
+
+            return;
         }
 
         mediaPlayer.stop();
 
+        stopProgressUpdates();
+
         state = PlayerState.STOPPED;
 
-        System.out.println("Stopped: " + currentSong);
+        System.out.println(
+                "Stopped: " + currentSong
+        );
     }
 
     // GET STATE

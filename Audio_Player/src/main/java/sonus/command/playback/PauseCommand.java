@@ -1,14 +1,14 @@
 package sonus.command.playback;
 
 import sonus.command.Command;
-import sonus.core.JavaFXPlayerEngine;
+import sonus.core.AudioEngine;
 
 public class PauseCommand implements Command {
 
-    private final JavaFXPlayerEngine engine;
+    private final AudioEngine engine;
 
     public PauseCommand(
-            JavaFXPlayerEngine engine
+             AudioEngine engine
     ) {
 
         this.engine = engine;

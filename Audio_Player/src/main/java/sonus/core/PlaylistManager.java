@@ -28,18 +28,58 @@ public class PlaylistManager {
         this.shuffleOrder = new ArrayList<>();
     }
 
-    // add song to playlist
-    public void addSong(Song song){
-        if(song == null){
-            throw new IllegalArgumentException("Song cannot be null");
+
+    public boolean containsSong(
+            String filePath
+    ) {
+
+        for (Song song : playlist) {
+
+            if (song.getFilePath()
+                    .equalsIgnoreCase(filePath)) {
+
+                return true;
+            }
         }
+
+        return false;
+    }
+
+
+
+    // add song to playlist
+
+    public void addSong(Song song) {
+
+        if (song == null) {
+
+            throw new IllegalArgumentException(
+                    "Song cannot be null"
+            );
+        }
+
+        if (containsSong(
+                song.getFilePath()
+        )) {
+
+            System.out.println(
+                    "Song already exists in playlist"
+            );
+
+            return;
+        }
+
         playlist.add(song);
 
-        // if first song added, make it current
-        if (currentIndex == -1){
+        System.out.println(
+                "Added to playlist: " + song
+        );
+
+        // Auto-select first song
+        if (currentIndex == -1) {
+
             currentIndex = 0;
         }
-
     }
     public void removeSong(int index) {
 
@@ -248,7 +288,6 @@ public class PlaylistManager {
 
         return playlist.get(currentIndex);
     }
-
 
     // check if next song exists
     public boolean hasNext(){

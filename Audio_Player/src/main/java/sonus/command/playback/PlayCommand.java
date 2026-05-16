@@ -1,19 +1,19 @@
 package sonus.command.playback;
 
 import sonus.command.Command;
-import sonus.core.JavaFXPlayerEngine;
+import sonus.core.AudioEngine;
 import sonus.core.PlayerState;
 import sonus.core.PlaylistManager;
 import sonus.model.Song;
 
 public class PlayCommand implements Command {
 
-    private final JavaFXPlayerEngine engine;
+    private final AudioEngine engine;
 
     private final PlaylistManager playlistManager;
 
     public PlayCommand(
-            JavaFXPlayerEngine engine,
+            AudioEngine engine,
             PlaylistManager playlistManager
     ) {
 

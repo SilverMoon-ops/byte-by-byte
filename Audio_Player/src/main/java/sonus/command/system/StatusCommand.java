@@ -1,18 +1,18 @@
 package sonus.command.system;
 
 import sonus.command.Command;
-import sonus.core.JavaFXPlayerEngine;
+import sonus.core.AudioEngine;
 import sonus.core.PlaylistManager;
 import sonus.model.Song;
 
 public class StatusCommand implements Command {
 
-    private final JavaFXPlayerEngine engine;
+    private final AudioEngine engine;
 
     private final PlaylistManager playlistManager;
 
     public StatusCommand(
-            JavaFXPlayerEngine engine,
+            AudioEngine engine,
             PlaylistManager playlistManager
     ) {
 

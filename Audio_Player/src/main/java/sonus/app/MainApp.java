@@ -8,6 +8,7 @@ import sonus.core.JavaFXPlayerEngine;
 import sonus.service.PlaylistService;
 import sonus.core.PlaylistManager;
 import sonus.model.Song;
+import sonus.core.AudioEngine;
 
 import java.util.Scanner;
 
@@ -20,7 +21,7 @@ public class MainApp {
 
         Scanner scanner = new Scanner(System.in);
 
-        JavaFXPlayerEngine engine = new JavaFXPlayerEngine();
+        AudioEngine engine = new JavaFXPlayerEngine();
 
         PlaylistManager playlistManager = new PlaylistManager();
 

@@ -12,6 +12,7 @@ import sonus.command.playlist.FolderCommand;
 import sonus.command.playlist.AddSongCommand;
 import sonus.command.playlist.SeekCommand;
 import sonus.command.playback.VolumeCommand;
+import sonus.core.AudioEngine;
 
 
 import sonus.core.JavaFXPlayerEngine;
@@ -23,7 +24,7 @@ import java.util.List;
 
 public class CommandHandler {
 
-    private final JavaFXPlayerEngine engine;
+    private final AudioEngine engine;
 
     private final PlaylistManager playlistManager;
 
@@ -32,7 +33,7 @@ public class CommandHandler {
     private final List<Command> commands;
 
     public CommandHandler(
-            JavaFXPlayerEngine engine,
+            AudioEngine engine,
             PlaylistManager playlistManager,
             PlaylistService playlistService
     ) {

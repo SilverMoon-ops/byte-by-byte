@@ -1,14 +1,14 @@
 package sonus.command.playlist;
 
 import sonus.command.Command;
-import sonus.core.JavaFXPlayerEngine;
+import sonus.core.AudioEngine;
 
 public class SeekCommand implements Command {
 
-    private final JavaFXPlayerEngine engine;
+    private final AudioEngine engine;
 
     public SeekCommand(
-            JavaFXPlayerEngine engine
+            AudioEngine engine
     ) {
 
         this.engine = engine;
