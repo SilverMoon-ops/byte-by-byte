@@ -116,9 +116,13 @@ public class JavaFXPlayerEngine implements AudioEngine {
 
         } catch (Exception e) {
 
-            throw new RuntimeException(
-                    "Failed to load media: " + e.getMessage()
-            );
+            String message =e.getMessage();
+            if (message == null && message.toLowerCase().contains("unrecognized file signature")) {
+
+                throw new InvalidOperationException("Playback backend does not support this audio format");
+            }
+
+            throw new InvalidOperationException("Failed to load mediaa");
         }
     }
 

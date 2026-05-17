@@ -22,6 +22,7 @@ public class MainApp {
         Scanner scanner = new Scanner(System.in);
 
         AudioEngine engine = new JavaFXPlayerEngine();
+        // AudioEngine engine = new FFmpegPlayerEngine();
 
         PlaylistManager playlistManager = new PlaylistManager();
 

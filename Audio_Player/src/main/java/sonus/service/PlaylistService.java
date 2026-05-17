@@ -5,8 +5,21 @@ import sonus.core.PlaylistManager;
 import sonus.model.Song;
 
 import java.io.File;
+import java.util.Set;
+
 
 public class PlaylistService {
+
+    private static final Set<String>
+    SUPPORTED_FORMATS = Set.of(
+            "mp3",
+            "wav",
+            "flac",
+            "ogg",
+            "m4a",
+            "acc"
+
+    );
 
     private final PlaylistManager playlistManager;
 
@@ -20,11 +33,14 @@ public class PlaylistService {
     // CHECK SUPPORTED FORMATS
     private boolean isSupportedAudioFile(String fileName) {
 
-        String lowerName =
-                fileName.toLowerCase();
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex == -1){
+            return false;
+        }
+        String extension = fileName.substring(dotIndex +1).toLowerCase();
+        return SUPPORTED_FORMATS.contains(extension);
 
-        return lowerName.endsWith(".mp3") ||
-                lowerName.endsWith(".wav");
+
     }
 
     // ADD ENTIRE FOLDER
