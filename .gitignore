@@ -44,3 +44,7 @@ hs_err_pid*
 *.jar
 *.war
 *.ear
+
+Audio_Player/target/
+Audio_Player/.idea/
+Audio_Player/*.iml
