@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
 
 import sonus.command.CommandHandler;
+import sonus.core.FFmpegPlayerEngine;
 import sonus.core.JavaFXPlayerEngine;
 import sonus.service.PlaylistService;
 import sonus.core.PlaylistManager;
@@ -21,7 +22,7 @@ public class MainApp {
 
         Scanner scanner = new Scanner(System.in);
 
-        AudioEngine engine = new JavaFXPlayerEngine();
+        AudioEngine engine = new FFmpegPlayerEngine();
         // AudioEngine engine = new FFmpegPlayerEngine();
 
         PlaylistManager playlistManager = new PlaylistManager();
