@@ -28,6 +28,8 @@ public class FFmpegPlayerEngine
 
     private volatile boolean playing;
 
+    private Runnable onSongFinished;
+
     @Override
     public void load(Song song) {
 
@@ -89,12 +91,24 @@ public class FFmpegPlayerEngine
 
     @Override
     public double getCurrentTime() {
-        return 0;
+
+        if (grabber == null) {
+            return 0;
+        }
+
+        return grabber.getTimestamp()
+                / 1_000_000.0;
     }
 
     @Override
     public double getTotalDuration() {
-        return 0;
+
+        if (grabber == null) {
+            return 0;
+        }
+
+        return grabber.getLengthInTime()
+                / 1_000_000.0;
     }
 
     @Override
@@ -105,13 +119,51 @@ public class FFmpegPlayerEngine
     @Override
     public void seek(double seconds) {
 
-        System.out.println(
-                "Seek control not implemented yet"
-        );
+        if (grabber == null) {
+            return;
+        }
+
+        try {
+
+            long timestamp =
+                    (long) (seconds * 1_000_000);
+
+            grabber.setTimestamp(timestamp);
+
+            System.out.println(
+                    "Seeked to " +
+                            seconds +
+                            " sec"
+            );
+
+        } catch (FrameGrabber.Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to seek",
+                    e
+            );
+        }
     }
 
     @Override
     public void play() {
+
+        if (state == PlayerState.PAUSED) {
+
+            if (speakers != null) {
+                speakers.start();
+            }
+
+            playing = true;
+
+            state = PlayerState.PLAYING;
+
+            System.out.println(
+                    "Playback resumed"
+            );
+
+            return;
+        }
 
         if (grabber == null) {
 
@@ -165,12 +217,16 @@ public class FFmpegPlayerEngine
                 Frame frame = null;
 
                 while (
-                        playing
-                                &&
-                                (frame = grabber.grabSamples()) != null
+                        (frame = grabber.grabSamples()) != null
                 )
 
                 {
+                    if (!playing) {
+
+                        Thread.sleep(100);
+
+                        continue;
+                    }
 
                     if (frame.samples == null) {
                         continue;
@@ -217,6 +273,10 @@ public class FFmpegPlayerEngine
 
                 state = PlayerState.STOPPED;
 
+                if (onSongFinished != null) {
+                    onSongFinished.run();
+                }
+
             } catch (Exception e) {
 
                 e.printStackTrace();
@@ -234,8 +294,20 @@ public class FFmpegPlayerEngine
     @Override
     public void pause() {
 
+        if (state != PlayerState.PLAYING) {
+            return;
+        }
+
+        playing = false;
+
+        state = PlayerState.PAUSED;
+
+        if (speakers != null) {
+            speakers.stop();
+        }
+
         System.out.println(
-                "Pause not implemented yet"
+                "Playback paused"
         );
     }
 
@@ -319,12 +391,14 @@ public class FFmpegPlayerEngine
     }
 
     @Override
-    public void setOnSongFinished(Runnable callback) {
-
+    public void setOnProgressUpdate(Runnable callback) {
     }
 
     @Override
-    public void setOnProgressUpdate(Runnable callback) {
+    public void setOnSongFinished(
+            Runnable callback
+    ) {
 
+        this.onSongFinished = callback;
     }
 }

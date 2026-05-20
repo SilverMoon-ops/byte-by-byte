@@ -40,7 +40,6 @@ public class MainApp {
         // Auto play next song
         engine.setOnSongFinished(() -> {
 
-            Platform.runLater(() -> {
 
                 try {
 
@@ -69,7 +68,7 @@ public class MainApp {
 
                     System.out.print("> ");
                 }
-            });
+
         });
 
         // Welcome Banner
@@ -113,6 +112,7 @@ public class MainApp {
 
                 break;
             }
+
 
             // Let command handler process commands
             boolean handled =
