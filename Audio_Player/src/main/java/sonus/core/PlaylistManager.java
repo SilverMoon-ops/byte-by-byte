@@ -14,10 +14,12 @@ public class PlaylistManager {
     private boolean shuffleEnabled;
     private List<Integer> shuffleOrder;
     private int shuffleIndex;
+    private boolean repeatPlaylist;
+
 
     // Track Current Song position
     private int currentIndex;
-    private boolean repeatPlaylist;
+
 
     public PlaylistManager(){
         this.playlist = new ArrayList<>();
@@ -330,4 +332,9 @@ public class PlaylistManager {
         }
     }
 
+    public void reset() {
+
+        currentIndex = -1;
+
+    }
 }

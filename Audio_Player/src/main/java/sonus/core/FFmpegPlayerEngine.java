@@ -51,6 +51,9 @@ public class FFmpegPlayerEngine
 
         try {
 
+            avutil.av_log_set_level(avutil.AV_LOG_FATAL);
+
+
             stop();
 
             grabber =
@@ -58,9 +61,18 @@ public class FFmpegPlayerEngine
                             song.getFilePath()
                     );
 
-            grabber.setSampleFormat(
-                    avutil.AV_SAMPLE_FMT_S16
+            grabber.setOption(
+                    "analyzeduration",
+                    "10000000"
             );
+
+            grabber.setOption(
+                    "probesize",
+                    "5000000"
+            );
+
+            grabber.setAudioChannels(2);
+
 
             grabber.start();
 
@@ -325,12 +337,31 @@ public class FFmpegPlayerEngine
                 );
             }
 
+            long lastProgressUpdate = 0;
+
             if (
                     onProgressUpdate
                             != null
             ) {
 
-                onProgressUpdate.run();
+                long now =
+                        System.currentTimeMillis();
+
+                if (
+                        now - lastProgressUpdate
+                                >= 500
+                ) {
+
+                    lastProgressUpdate = now;
+
+                    if (
+                            onProgressUpdate
+                                    != null
+                    ) {
+
+                        onProgressUpdate.run();
+                    }
+                }
             }
         }
 
@@ -463,13 +494,26 @@ public class FFmpegPlayerEngine
                     timestamp
             );
 
+            if (audioFilter != null) {
+                audioFilter.stop();
+                audioFilter.release();
+                audioFilter = null;
+            }
+
+            audioFilter = new FFmpegFrameFilter(
+                    "aformat=sample_fmts=s16:channel_layouts=stereo",
+                    2
+            );
+            audioFilter.setSampleRate(grabber.getSampleRate());
+            audioFilter.start();
+
             System.out.println(
                     "Seeked to "
                             + seconds
                             + " sec"
             );
 
-        } catch (FrameGrabber.Exception e) {
+        } catch (FrameGrabber.Exception | FFmpegFrameFilter.Exception e) {
 
             throw new RuntimeException(
                     "Failed to seek",
