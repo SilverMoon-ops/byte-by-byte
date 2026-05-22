@@ -46,6 +46,9 @@ public class FFmpegPlayerEngine
 
     private int currentVolume = 100;
 
+    private final Object playbackLock =
+            new Object();
+
     @Override
     public void load(Song song) {
 
@@ -250,6 +253,8 @@ public class FFmpegPlayerEngine
 
         state = PlayerState.PLAYING;
 
+        long lastProgressUpdate = 0;
+
         while (true) {
 
             if (!playing) {
@@ -267,8 +272,17 @@ public class FFmpegPlayerEngine
                 break;
             }
 
-            Frame rawFrame =
-                    grabber.grabSamples();
+            Frame rawFrame;
+
+            synchronized (playbackLock) {
+
+                if (grabber == null) {
+                    break;
+                }
+
+                rawFrame =
+                        grabber.grabSamples();
+            }
 
             if (rawFrame == null) {
                 break;
@@ -336,8 +350,6 @@ public class FFmpegPlayerEngine
                         validBytes
                 );
             }
-
-            long lastProgressUpdate = 0;
 
             if (
                     onProgressUpdate
@@ -445,13 +457,16 @@ public class FFmpegPlayerEngine
                 audioFilter = null;
             }
 
-            if (grabber != null) {
+            synchronized (playbackLock) {
 
-                grabber.stop();
+                if (grabber != null) {
 
-                grabber.release();
+                    grabber.stop();
 
-                grabber = null;
+                    grabber.release();
+
+                    grabber = null;
+                }
             }
 
             if (
