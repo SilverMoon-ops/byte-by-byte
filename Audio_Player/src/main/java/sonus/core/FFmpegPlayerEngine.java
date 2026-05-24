@@ -135,9 +135,11 @@ public class FFmpegPlayerEngine
     @Override
     public void play() {
 
+        // Resume playback
         if (state == PlayerState.PAUSED) {
 
             if (speakers != null) {
+
                 speakers.start();
             }
 
@@ -152,14 +154,8 @@ public class FFmpegPlayerEngine
             return;
         }
 
-        if (grabber == null) {
-
-            throw new RuntimeException(
-                    "No song loaded"
-            );
-        }
-
-        if (state == PlayerState.PLAYING) {
+        // Ignore duplicate play clicks
+        if (playing) {
 
             System.out.println(
                     "Song already playing"
@@ -167,6 +163,19 @@ public class FFmpegPlayerEngine
 
             return;
         }
+
+        // No song loaded
+        if (grabber == null) {
+
+            throw new RuntimeException(
+                    "No song loaded"
+            );
+        }
+
+        // Mark active BEFORE thread starts
+        playing = true;
+
+        state = PlayerState.PLAYING;
 
         playbackThread =
                 new Thread(() -> {
@@ -186,9 +195,15 @@ public class FFmpegPlayerEngine
                     ) {
 
                         e.printStackTrace();
-                    }
 
+                        playing = false;
+
+                        state =
+                                PlayerState.STOPPED;
+                    }
                 });
+
+        playbackThread.setDaemon(true);
 
         playbackThread.start();
 
@@ -222,6 +237,7 @@ public class FFmpegPlayerEngine
 
                         false
                 );
+
         DataLine.Info info =
                 new DataLine.Info(
                         SourceDataLine.class,
@@ -249,10 +265,6 @@ public class FFmpegPlayerEngine
 
         speakers.start();
 
-        playing = true;
-
-        state = PlayerState.PLAYING;
-
         long lastProgressUpdate = 0;
 
         while (true) {
@@ -277,6 +289,7 @@ public class FFmpegPlayerEngine
             synchronized (playbackLock) {
 
                 if (grabber == null) {
+
                     break;
                 }
 
@@ -285,6 +298,7 @@ public class FFmpegPlayerEngine
             }
 
             if (rawFrame == null) {
+
                 break;
             }
 
@@ -294,10 +308,12 @@ public class FFmpegPlayerEngine
                     audioFilter.pullSamples();
 
             if (frame == null) {
+
                 continue;
             }
 
             if (frame.samples == null) {
+
                 continue;
             }
 
@@ -351,28 +367,22 @@ public class FFmpegPlayerEngine
                 );
             }
 
+            long now =
+                    System.currentTimeMillis();
+
             if (
-                    onProgressUpdate
-                            != null
+                    now - lastProgressUpdate
+                            >= 500
             ) {
 
-                long now =
-                        System.currentTimeMillis();
+                lastProgressUpdate = now;
 
                 if (
-                        now - lastProgressUpdate
-                                >= 500
+                        onProgressUpdate
+                                != null
                 ) {
 
-                    lastProgressUpdate = now;
-
-                    if (
-                            onProgressUpdate
-                                    != null
-                    ) {
-
-                        onProgressUpdate.run();
-                    }
+                    onProgressUpdate.run();
                 }
             }
         }

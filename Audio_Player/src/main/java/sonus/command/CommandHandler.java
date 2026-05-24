@@ -15,7 +15,6 @@ import sonus.command.playback.VolumeCommand;
 import sonus.core.AudioEngine;
 
 
-import sonus.core.JavaFXPlayerEngine;
 import sonus.core.PlaylistManager;
 import sonus.model.Song;
 import sonus.service.PlaylistService;
