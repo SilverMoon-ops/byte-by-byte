@@ -9,6 +9,7 @@ import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 
+
 import java.nio.ShortBuffer;
 
 
@@ -250,6 +251,7 @@ public class FFmpegPlayerEngine
 
         speakers.open(format);
 
+
         if (
                 speakers.isControlSupported(
                         FloatControl.Type.MASTER_GAIN
@@ -274,6 +276,14 @@ public class FFmpegPlayerEngine
                 Thread.sleep(100);
 
                 continue;
+            }
+
+            if (
+                    Thread.currentThread()
+                            .isInterrupted()
+            ) {
+
+                break;
             }
 
             if (
@@ -431,33 +441,31 @@ public class FFmpegPlayerEngine
 
         try {
 
-            PlayerState previousState =
-                    state;
-
             playing = false;
 
             state = PlayerState.STOPPED;
 
+            // Stop playback thread safely
             if (playbackThread != null) {
 
                 playbackThread.interrupt();
 
+                playbackThread.join(1000);
+
                 playbackThread = null;
             }
 
+            // Stop speakers
             if (speakers != null) {
 
-                if (speakers.isRunning()) {
-                    speakers.stop();
-                }
-
-                speakers.flush();
+                speakers.stop();
 
                 speakers.close();
 
                 speakers = null;
             }
 
+            // Release audio filter
             if (audioFilter != null) {
 
                 audioFilter.stop();
@@ -467,32 +475,26 @@ public class FFmpegPlayerEngine
                 audioFilter = null;
             }
 
-            synchronized (playbackLock) {
+            // Release grabber
+            if (grabber != null) {
 
-                if (grabber != null) {
+                grabber.stop();
 
-                    grabber.stop();
+                grabber.release();
 
-                    grabber.release();
-
-                    grabber = null;
-                }
+                grabber = null;
             }
 
-            if (
-                    previousState
-                            != PlayerState.STOPPED
-            ) {
-
-                System.out.println(
-                        "Playback stopped"
-                );
-            }
+            System.out.println(
+                    "Playback stopped"
+            );
 
         } catch (
-                FrameGrabber.Exception
+                InterruptedException
                 |
-                FrameFilter.Exception e
+                FrameFilter.Exception
+                |
+                FrameGrabber.Exception e
         ) {
 
             e.printStackTrace();
