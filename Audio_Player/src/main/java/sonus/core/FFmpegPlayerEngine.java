@@ -50,6 +50,23 @@ public class FFmpegPlayerEngine
     private final Object playbackLock =
             new Object();
 
+
+    private String detectFormat(String filePath) {
+        try {
+            int lastDot = filePath.lastIndexOf(".");
+            if (lastDot > 0) {
+                String extension = filePath.substring(lastDot + 1).toLowerCase().trim();
+
+                // Return the extension as-is, FFmpeg handles it
+                // FFmpeg recognizes: mp3, wav, m4a, aac, flac, ogg, wma, opus, etc.
+                return extension.isEmpty() ? null : extension;
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return null;
+    }
+
     @Override
     public void load(Song song) {
 
@@ -64,6 +81,11 @@ public class FFmpegPlayerEngine
                     new FFmpegFrameGrabber(
                             song.getFilePath()
                     );
+
+            String format = detectFormat(song.getFilePath());
+            if (format != null) {
+                grabber.setFormat(format);
+            }
 
             grabber.setOption(
                     "analyzeduration",
@@ -80,14 +102,16 @@ public class FFmpegPlayerEngine
 
             grabber.start();
 
+            int channels = grabber.getAudioChannels();
+
             audioFilter =
                     new FFmpegFrameFilter(
 
                             "aformat=sample_fmts=s16:"
                                     +
-                                    "channel_layouts=stereo",
+                                    "channel_layouts=" + (channels == 1 ? "mono" : "stereo"),
 
-                            2
+                            channels
                     );
 
             audioFilter.setSampleRate(
@@ -312,24 +336,13 @@ public class FFmpegPlayerEngine
                 break;
             }
 
-            audioFilter.push(rawFrame);
-
-            Frame frame =
-                    audioFilter.pullSamples();
-
-            if (frame == null) {
-
-                continue;
-            }
-
-            if (frame.samples == null) {
-
+            if (rawFrame.samples == null) {
                 continue;
             }
 
             ShortBuffer buffer =
                     (ShortBuffer)
-                            frame.samples[0];
+                            rawFrame.samples[0];
 
             buffer.rewind();
 
@@ -527,9 +540,11 @@ public class FFmpegPlayerEngine
                 audioFilter = null;
             }
 
+            int channels = grabber.getAudioChannels();
+
             audioFilter = new FFmpegFrameFilter(
-                    "aformat=sample_fmts=s16:channel_layouts=stereo",
-                    2
+                    "aformat=sample_fmts=s16:channel_layouts=" + (channels == 1 ? "mono" : "stereo"),
+                    channels
             );
             audioFilter.setSampleRate(grabber.getSampleRate());
             audioFilter.start();
