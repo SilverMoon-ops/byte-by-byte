@@ -83,6 +83,17 @@ public class PlaylistManager {
             currentIndex = 0;
         }
     }
+
+    // =========================
+   // Get Playlist Songs
+  // =========================
+
+    public List<Song> getSongs() {
+
+        return playlist;
+    }
+
+
     public void removeSong(int index) {
 
         if (index < 0 || index >= playlist.size()) {
@@ -129,6 +140,18 @@ public class PlaylistManager {
             return null;
         }
         return playlist.get(currentIndex);
+    }
+
+    // =========================
+// Set Current Song
+// =========================
+
+    public void setCurrentSong(
+            Song song
+    ) {
+
+        currentIndex =
+                playlist.indexOf(song);
     }
 
     public void setRepeatPlaylist(boolean repeatPlaylist) {

@@ -1,78 +1,310 @@
 package sonus.app;
 
 import javafx.application.Application;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.layout.BorderPane;
-import javafx.stage.Stage;
-import javafx.geometry.Pos;
-import javafx.scene.layout.HBox;
+import javafx.application.Platform;
+
 import javafx.geometry.Insets;
-import javafx.scene.layout.VBox;
-import javafx.scene.control.Slider;
+import javafx.geometry.Pos;
+
+import javafx.scene.Scene;
+
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
+
+import javafx.scene.control.ListView;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+
+import javafx.stage.Stage;
+import javafx.scene.control.ToolBar;
+import javafx.stage.FileChooser;
+import javafx.stage.DirectoryChooser;
 
 import sonus.core.AudioEngine;
 import sonus.core.FFmpegPlayerEngine;
 import sonus.core.PlayerState;
+import sonus.core.PlaylistManager;
+
 import sonus.model.Song;
+import java.io.File;
+import java.util.List;
 
 public class SonusApplication
         extends Application {
 
+    private boolean seeking = false;
+
+    private final AudioEngine engine =
+            new FFmpegPlayerEngine();
+
+    private Slider progressSlider;
+
+    private Slider volumeSlider;
+
+    private Label currentTimeLabel;
+
+    private Label totalTimeLabel;
+
+    private Button playPauseButton;
+
+
     @Override
     public void start(Stage stage) {
 
-        AudioEngine engine =
-                new FFmpegPlayerEngine();
+        //====================
+       // Playlist Manager
+      //======================
 
-        Button playPauseButton =
-                new Button("▶");
+        PlaylistManager playlistManager =
+                new PlaylistManager();
 
-        playPauseButton.setOnAction(event -> {
 
-            try {
+        // =========================
+       // Playlist View Data
+      // =========================
 
-                // Pause if already playing
-                if (
-                        engine.getState()
-                                == PlayerState.PLAYING
-                ) {
+        ObservableList<Song> playlistItems =
+                FXCollections.observableArrayList(
+                        playlistManager.getSongs()
+                );
 
-                    engine.pause();
+        // =========================
+       // Playlist View
+      // =========================
 
-                    playPauseButton.setText("▶");
+        ListView<Song> playlistView =
+                new ListView<>(playlistItems);
 
+        playlistView.setPrefWidth(300);
+
+        // =========================
+       // Current Song Display
+      // =========================
+
+        Label nowPlayingLabel =
+                new Label("Now Playing");
+
+        Label songTitleLabel =
+                new Label("No song selected");
+
+        Label artistLabel =
+                new Label("");
+
+        // =========================
+       // Playlist Double Click
+      // =========================
+
+        playlistView.setOnMouseClicked(event -> {
+
+            if (event.getClickCount() == 2) {
+
+                Song selectedSong =
+                        playlistView
+                                .getSelectionModel()
+                                .getSelectedItem();
+
+                if (selectedSong == null) {
                     return;
                 }
 
-                // Load song if none loaded
-                if (
-                        engine.getCurrentSong()
-                                == null
-                ) {
+                try {
 
-                    Song song =
-                            new Song(
+                    engine.stop();
 
-                                    "D:/Program Files/Symphony No.6 (1st movement).m4a",
+                    engine.load(selectedSong);
 
-                                    "Symphony No.6",
+                    playlistManager.setCurrentSong(
+                            selectedSong
+                    );
 
-                                    "Unknown Artist",
+                    songTitleLabel.setText(
+                            selectedSong.getTitle()
+                    );
 
-                                    "m4a",
+                    artistLabel.setText(
+                            selectedSong.getArtist()
+                    );
 
-                                    244
-                            );
+                    engine.play();
 
-                    engine.load(song);
+                    playPauseButton.setText("⏸");
+
+                } catch (Exception e) {
+
+                    e.printStackTrace();
+                }
+            }
+        });
+
+
+        // =========================
+        // Progress Slider
+        // =========================
+
+        progressSlider =
+                new Slider();
+
+        progressSlider.setMin(0);
+
+        progressSlider.setMax(100);
+
+        progressSlider.setValue(0);
+
+        progressSlider.setPrefWidth(500);
+
+        progressSlider.setOnMousePressed(event -> {
+
+            seeking = true;
+        });
+
+        progressSlider.setOnMouseReleased(event -> {
+
+            double seekTime =
+                    progressSlider.getValue();
+
+            engine.seek(seekTime);
+
+            seeking = false;
+        });
+
+        // =========================
+        // Time Labels
+        // =========================
+
+        currentTimeLabel =
+                new Label("00:00");
+
+        totalTimeLabel =
+                new Label("00:00");
+
+        // =========================
+        // Playback Callback
+        // =========================
+
+        engine.setOnProgressUpdate(() -> {
+
+            Platform.runLater(() -> {
+
+                double current =
+                        engine.getCurrentTime();
+
+                double total =
+                        engine.getTotalDuration();
+
+                progressSlider.setMax(total);
+
+                if (!seeking) {
+
+                    progressSlider.setValue(current);
                 }
 
-                // Play or resume
-                engine.play();
+                currentTimeLabel.setText(
+                        formatTime(current)
+                );
 
-                playPauseButton.setText("⏸");
+                totalTimeLabel.setText(
+                        formatTime(total)
+                );
+            });
+        });
+
+        // =========================
+        // Volume Slider
+        // =========================
+
+        volumeSlider =
+                new Slider(
+                        0,
+                        100,
+                        100
+                );
+
+        volumeSlider.setPrefWidth(180);
+
+        volumeSlider.valueProperty().addListener(
+
+                (
+                        observable,
+                        oldValue,
+                        newValue
+                ) -> {
+
+                    engine.setVolume(
+                            newValue.doubleValue()
+                    );
+                }
+        );
+
+        HBox volumeSection =
+                new HBox(
+                        10,
+                        new Label("🔊"),
+                        volumeSlider
+                );
+
+        volumeSection.setAlignment(
+                Pos.CENTER
+        );
+
+        // =========================
+        // Toolbar Buttons
+        // =========================
+
+        Button addSongButton =
+                new Button("Add Song");
+
+        Button addMultipleButton =
+                new Button("Add Multiple");
+
+        Button addFolderButton =
+                new Button("Add Folder");
+
+        // =========================
+       // Add Single Song
+      // =========================
+
+        addSongButton.setOnAction(event -> {
+
+            FileChooser fileChooser =
+                    new FileChooser();
+
+            fileChooser.setTitle(
+                    "Select Audio File"
+            );
+
+            File selectedFile =
+                    fileChooser.showOpenDialog(stage);
+
+            if (selectedFile == null) {
+                return;
+            }
+
+            try {
+
+                Song song =
+                        new Song(
+
+                                selectedFile
+                                        .getAbsolutePath(),
+
+                                selectedFile
+                                        .getName(),
+
+                                "Unknown Artist",
+
+                                "unknown",
+
+                                0
+                        );
+
+                playlistManager.addSong(song);
+
+                playlistItems.add(song);
 
             } catch (Exception e) {
 
@@ -80,8 +312,124 @@ public class SonusApplication
             }
         });
 
+     // =========================
+    // Add Multiple Songs
+   // ===========================
+
+        addMultipleButton.setOnAction(event -> {
+
+            FileChooser fileChooser =
+                    new FileChooser();
+
+            fileChooser.setTitle(
+                    "Select Audio Files"
+            );
+
+            List<File> selectedFiles =
+                    fileChooser.showOpenMultipleDialog(stage);
+
+            if (selectedFiles == null) {
+                return;
+            }
+
+            for (File file : selectedFiles) {
+
+                try {
+
+                    Song song =
+                            new Song(
+
+                                    file.getAbsolutePath(),
+
+                                    file.getName(),
+
+                                    "Unknown Artist",
+
+                                    "unknown",
+
+                                    0
+                            );
+
+                    playlistManager.addSong(song);
+
+                    playlistItems.add(song);
+
+                } catch (Exception e) {
+
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        // =========================
+       // Add Folder
+      // =========================
+
+        addFolderButton.setOnAction(event -> {
+
+            DirectoryChooser directoryChooser =
+                    new DirectoryChooser();
+
+            directoryChooser.setTitle(
+                    "Select Music Folder"
+            );
+
+            File selectedFolder =
+                    directoryChooser.showDialog(stage);
+
+            if (selectedFolder == null) {
+                return;
+            }
+
+            File[] files =
+                    selectedFolder.listFiles();
+
+            if (files == null) {
+                return;
+            }
+
+            for (File file : files) {
+
+                if (!file.isFile()) {
+                    continue;
+                }
+
+                try {
+
+                    Song song =
+                            new Song(
+
+                                    file.getAbsolutePath(),
+
+                                    file.getName(),
+
+                                    "Unknown Artist",
+
+                                    "unknown",
+
+                                    0
+                            );
+
+                    playlistManager.addSong(song);
+
+                    playlistItems.add(song);
+
+                } catch (Exception e) {
+
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        // =========================
+        // Control Buttons
+        // =========================
+
         Button previousButton =
                 new Button("⏮");
+
+        playPauseButton =
+                new Button("▶");
 
         Button stopButton =
                 new Button("⏹");
@@ -97,6 +445,174 @@ public class SonusApplication
 
         nextButton.setPrefSize(50, 40);
 
+        // =========================
+        // Play / Pause Logic
+        // =========================
+
+        playPauseButton.setOnAction(event -> {
+
+            try {
+
+                // Pause
+                if (
+                        engine.getState()
+                                == PlayerState.PLAYING
+                ) {
+
+                    engine.pause();
+
+                    playPauseButton.setText("▶");
+
+                    return;
+                }
+
+                // Load current playlist song
+                if (
+                        engine.getCurrentSong()
+                                == null
+                ) {
+
+                    Song currentSong =
+                            playlistManager.getCurrentSong();
+
+                    if (currentSong == null) {
+                        return;
+                    }
+
+                    engine.load(currentSong);
+
+                    songTitleLabel.setText(
+                            currentSong.getTitle()
+                    );
+
+                    artistLabel.setText(
+                            currentSong.getArtist()
+                    );
+                }
+
+                // Play / Resume
+                engine.play();
+
+                playPauseButton.setText("⏸");
+
+            } catch (Exception e) {
+
+                e.printStackTrace();
+            }
+        });
+
+        // =========================
+        // Stop Logic
+        // =========================
+
+        stopButton.setOnAction(event -> {
+
+            try {
+
+                engine.stop();
+
+                Song currentSong =
+                        playlistManager.getCurrentSong();
+
+                if (currentSong != null) {
+
+                    engine.load(currentSong);
+                }
+
+                playPauseButton.setText("▶");
+
+                progressSlider.setValue(0);
+
+                currentTimeLabel.setText("00:00");
+
+            } catch (Exception e) {
+
+                e.printStackTrace();
+            }
+        });
+
+
+        // =========================
+       // Next Song
+      // =========================
+
+        nextButton.setOnAction(event -> {
+
+            try {
+
+                Song nextSong =
+                        playlistManager.nextSong();
+
+                engine.stop();
+
+                engine.load(nextSong);
+
+                engine.play();
+
+                songTitleLabel.setText(
+                        nextSong.getTitle()
+                );
+
+                artistLabel.setText(
+                        nextSong.getArtist()
+                );
+
+                playPauseButton.setText("⏸");
+
+                playlistView
+                        .getSelectionModel()
+                        .select(nextSong);
+
+            } catch (Exception e) {
+
+                System.out.println(
+                        "No next song"
+                );
+            }
+        });
+
+        // =========================
+       // Previous Song
+      // =========================
+
+        previousButton.setOnAction(event -> {
+
+            try {
+
+                Song previousSong =
+                        playlistManager.previousSong();
+
+                engine.stop();
+
+                engine.load(previousSong);
+
+                engine.play();
+
+                songTitleLabel.setText(
+                        previousSong.getTitle()
+                );
+
+                artistLabel.setText(
+                        previousSong.getArtist()
+                );
+
+                playPauseButton.setText("⏸");
+
+                playlistView
+                        .getSelectionModel()
+                        .select(previousSong);
+
+            } catch (Exception e) {
+
+                System.out.println(
+                        "No previous song"
+                );
+            }
+        });
+
+        // =========================
+        // Controls Layout
+        // =========================
 
         HBox controls =
                 new HBox(
@@ -107,20 +623,13 @@ public class SonusApplication
                         nextButton
                 );
 
-        controls.setAlignment(Pos.CENTER);
-
-        controls.setPadding(
-                new Insets(20)
+        controls.setAlignment(
+                Pos.CENTER
         );
 
-        Slider progressSlider =
-                new Slider();
-
-        Label currentTimeLabel =
-                new Label("00:00");
-
-        Label totalTimeLabel =
-                new Label("00:00");
+        // =========================
+        // Progress Layout
+        // =========================
 
         HBox progressSection =
                 new HBox(
@@ -134,77 +643,114 @@ public class SonusApplication
                 Pos.CENTER
         );
 
-        VBox bottomSection =
-                new VBox();
+        // =========================
+        // Bottom Section
+        // =========================
 
-        bottomSection.getChildren()
-                .addAll(
+        VBox bottomSection =
+                new VBox(
+                        12,
                         progressSection,
-                        controls
+                        controls,
+                        volumeSection
                 );
 
+        bottomSection.setAlignment(
+                Pos.CENTER
+        );
+
+        bottomSection.setPadding(
+                new Insets(15)
+        );
+
+        // =========================
+       // Toolbar
+      // =========================
+
+        ToolBar toolBar =
+                new ToolBar(
+
+                        addSongButton,
+
+                        addMultipleButton,
+
+                        addFolderButton
+                );
+
+        // =========================
+       // Top Section
+      // =========================
+
+        VBox topSection =
+                new VBox(
+                        5,
+                        nowPlayingLabel,
+                        songTitleLabel,
+                        artistLabel
+                );
+
+        topSection.setAlignment(
+                Pos.CENTER
+        );
+
+        topSection.setPadding(
+                new Insets(20)
+        );
+
+        // =========================
+        // Root Layout
+        // =========================
 
         BorderPane root =
                 new BorderPane();
 
+        VBox topContainer =
+                new VBox(
+                        toolBar,
+                        topSection
+                );
+
+        root.setTop(topContainer);
+        root.setCenter(playlistView);
         root.setBottom(bottomSection);
 
-
+        // =========================
+        // Scene
+        // =========================
 
         Scene scene =
-                new Scene(root, 800, 500);
+                new Scene(
+                        root,
+                        900,
+                        600
+                );
 
         stage.setTitle("Sonus");
 
         stage.setScene(scene);
 
         stage.show();
-
-        stopButton.setOnAction(event -> {
-
-            try {
-
-                engine.stop();
-
-                Song song =
-                        new Song(
-
-                                "D:/Program Files/Symphony No.6 (1st movement).m4a",
-
-                                "Symphony No.6",
-
-                                "Unknown Artist",
-
-                                "m4a",
-
-                                244
-                        );
-
-                engine.load(song);
-
-                playPauseButton.setText("▶");
-
-            } catch (Exception e) {
-
-                e.printStackTrace();
-            }
-        });
-
-        nextButton.setOnAction(event -> {
-
-            System.out.println("Next");
-        });
-
-        previousButton.setOnAction(event -> {
-
-            System.out.println("Previous");
-        });
-
-
-
     }
 
+    private String formatTime(
+            double seconds
+    ) {
 
+        int totalSeconds =
+                (int) seconds;
+
+        int minutes =
+                totalSeconds / 60;
+
+        int remainingSeconds =
+                totalSeconds % 60;
+
+        return String.format(
+                "%02d:%02d",
+                minutes,
+                remainingSeconds
+        );
+    }
 
     public static void main(String[] args) {
 

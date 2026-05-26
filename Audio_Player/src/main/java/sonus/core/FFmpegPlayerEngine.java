@@ -471,6 +471,8 @@ public class FFmpegPlayerEngine
             // Stop speakers
             if (speakers != null) {
 
+                speakers.flush();
+
                 speakers.stop();
 
                 speakers.close();
@@ -533,6 +535,11 @@ public class FFmpegPlayerEngine
             grabber.setTimestamp(
                     timestamp
             );
+
+            if (speakers != null) {
+
+                speakers.flush();
+            }
 
             if (audioFilter != null) {
                 audioFilter.stop();
