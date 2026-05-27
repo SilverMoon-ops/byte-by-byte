@@ -16,10 +16,11 @@ public class PlaylistManager {
     private int shuffleIndex;
     private boolean repeatPlaylist;
 
-
     // Track Current Song position
     private int currentIndex;
 
+    // STEP 1 Added: Gatekeeper lock for thread safety
+    private final Object lock = new Object();
 
     public PlaylistManager(){
         this.playlist = new ArrayList<>();
@@ -30,174 +31,160 @@ public class PlaylistManager {
         this.shuffleOrder = new ArrayList<>();
     }
 
-
-    public boolean containsSong(
-            String filePath
-    ) {
-
-        for (Song song : playlist) {
-
-            if (song.getFilePath()
-                    .equalsIgnoreCase(filePath)) {
-
-                return true;
+    public boolean containsSong(String filePath) {
+        synchronized (lock) {
+            for (Song song : playlist) {
+                if (song.getFilePath().equalsIgnoreCase(filePath)) {
+                    return true;
+                }
             }
+            return false;
         }
-
-        return false;
     }
 
-
-
     // add song to playlist
-
     public void addSong(Song song) {
-
         if (song == null) {
-
-            throw new IllegalArgumentException(
-                    "Song cannot be null"
-            );
+            throw new IllegalArgumentException("Song cannot be null");
         }
 
-        if (containsSong(
-                song.getFilePath()
-        )) {
+        synchronized (lock) {
+            if (containsSong(song.getFilePath())) {
+                System.out.println("Song already exists in playlist");
+                return;
+            }
 
-            System.out.println(
-                    "Song already exists in playlist"
-            );
+            playlist.add(song);
+            System.out.println("Added to playlist: " + song);
 
-            return;
-        }
-
-        playlist.add(song);
-
-        System.out.println(
-                "Added to playlist: " + song
-        );
-
-        // Auto-select first song
-        if (currentIndex == -1) {
-
-            currentIndex = 0;
+            // Auto-select first song
+            if (currentIndex == -1) {
+                currentIndex = 0;
+            }
         }
     }
 
     // =========================
-   // Get Playlist Songs
-  // =========================
-
+    // Get Playlist Songs
+    // =========================
     public List<Song> getSongs() {
-
-        return playlist;
+        synchronized (lock) {
+            // Return a copy so external components can't break the original list unsafely
+            return new ArrayList<>(playlist);
+        }
     }
-
 
     public void removeSong(int index) {
+        synchronized (lock) {
+            if (index < 0 || index >= playlist.size()) {
+                throw new IllegalArgumentException("Invalid song index");
+            }
 
-        if (index < 0 || index >= playlist.size()) {
-            throw new IllegalArgumentException("Invalid song index");
-        }
+            Song removedSong = playlist.remove(index);
 
-        Song removedSong = playlist.remove(index);
+            // Fix current index
+            if (playlist.isEmpty()) {
+                currentIndex = -1;
+            } else if (index < currentIndex) {
+                currentIndex--;
+            } else if (index == currentIndex) {
+                if (currentIndex >= playlist.size()) {
+                    currentIndex = playlist.size() - 1;
+                }
+            }
 
-        // Fix current index
-        if (playlist.isEmpty()) {
+            System.out.println("Removed: " + removedSong);
 
-            currentIndex = -1;
-
-        } else if (index < currentIndex) {
-
-            currentIndex--;
-
-        } else if (index == currentIndex) {
-
-            if (currentIndex >= playlist.size()) {
-                currentIndex = playlist.size() - 1;
+            // Regenerate shuffle if enabled
+            if (shuffleEnabled) {
+                generateShuffleOrder();
+                shuffleIndex = 0;
             }
         }
-
-        System.out.println("Removed: " + removedSong);
-
-        // Regenerate shuffle if enabled
-        if (shuffleEnabled) {
-            generateShuffleOrder();
-            shuffleIndex = 0;
-        }
     }
+
     public void clearPlaylist() {
-
-        playlist.clear();
-
-        currentIndex = -1;
+        synchronized (lock) {
+            playlist.clear();
+            currentIndex = -1;
+        }
     }
 
     // get current song
     public Song getCurrentSong(){
-
-        if(playlist.isEmpty() || currentIndex == -1){
-            return null;
+        synchronized (lock) {
+            if(playlist.isEmpty() || currentIndex == -1){
+                return null;
+            }
+            return playlist.get(currentIndex);
         }
-        return playlist.get(currentIndex);
     }
 
     // =========================
-// Set Current Song
-// =========================
-
-    public void setCurrentSong(
-            Song song
-    ) {
-
-        currentIndex =
-                playlist.indexOf(song);
+    // Set Current Song
+    // =========================
+    public void setCurrentSong(Song song) {
+        synchronized (lock) {
+            currentIndex = playlist.indexOf(song);
+        }
     }
 
     public void setRepeatPlaylist(boolean repeatPlaylist) {
-        this.repeatPlaylist = repeatPlaylist;
-    }
-    public boolean isRepeatPlaylist() {
-        return repeatPlaylist;
-    }
-    public void setRepeatSingleSong(boolean repeatSingleSong) {
-        this.repeatSingleSong = repeatSingleSong;
-    }
-    public boolean isRepeatSingleSong() {
-        return repeatSingleSong;
-    }
-    public void enableShuffle() {
-
-        if (playlist.isEmpty()) {
-            return;
+        synchronized (lock) {
+            this.repeatPlaylist = repeatPlaylist;
         }
+    }
 
-        shuffleEnabled = true;
+    public boolean isRepeatPlaylist() {
+        synchronized (lock) {
+            return repeatPlaylist;
+        }
+    }
 
-        generateShuffleOrder();
+    public void setRepeatSingleSong(boolean repeatSingleSong) {
+        synchronized (lock) {
+            this.repeatSingleSong = repeatSingleSong;
+        }
+    }
 
-        // Keep current song position synced
-        shuffleIndex = 0;
+    public boolean isRepeatSingleSong() {
+        synchronized (lock) {
+            return repeatSingleSong;
+        }
+    }
 
-        System.out.println("Shuffle enabled");
+    public void enableShuffle() {
+        synchronized (lock) {
+            if (playlist.isEmpty()) {
+                return;
+            }
+
+            shuffleEnabled = true;
+            generateShuffleOrder();
+
+            // Keep current song position synced
+            shuffleIndex = 0;
+            System.out.println("Shuffle enabled");
+        }
     }
 
     public void disableShuffle() {
-
-        shuffleEnabled = false;
-
-        shuffleOrder.clear();
-
-        shuffleIndex = 0;
-
-        System.out.println("Shuffle disabled");
+        synchronized (lock) {
+            shuffleEnabled = false;
+            shuffleOrder.clear();
+            shuffleIndex = 0;
+            System.out.println("Shuffle disabled");
+        }
     }
+
     public boolean isShuffleEnabled() {
-        return shuffleEnabled;
+        synchronized (lock) {
+            return shuffleEnabled;
+        }
     }
 
+    // Called inside other synchronized methods, but uses the lock for extra internal safety
     private void generateShuffleOrder() {
-
         shuffleOrder.clear();
 
         // Current song stays first
@@ -207,7 +194,6 @@ public class PlaylistManager {
 
         // Add remaining songs
         for (int i = 0; i < playlist.size(); i++) {
-
             if (i != currentIndex) {
                 remaining.add(i);
             }
@@ -220,174 +206,153 @@ public class PlaylistManager {
         shuffleOrder.addAll(remaining);
     }
 
-
     // Move to next song
     public Song nextSong() {
+        synchronized (lock) {
+            if (playlist.isEmpty()) {
+                throw new IllegalStateException("Playlist is empty");
+            }
+            // Repeat current song
+            if (repeatSingleSong) {
+                return playlist.get(currentIndex);
+            }
+            // Shuffle playback
+            if (shuffleEnabled) {
+                // Move inside shuffle order
+                if (shuffleIndex < shuffleOrder.size() - 1) {
+                    shuffleIndex++;
+                }
+                // Repeat shuffled playlist
+                else if (repeatPlaylist) {
+                    generateShuffleOrder();
+                    shuffleIndex = 0;
+                }
+                // End reached
+                else {
+                    throw new IllegalStateException("No next song available");
+                }
 
-        if (playlist.isEmpty()) {
-            throw new IllegalStateException("Playlist is empty");
-        }
-        // Repeat current song
-        if (repeatSingleSong) {
-            return playlist.get(currentIndex);
-        }
-        // Shuffle playback
-        if (shuffleEnabled) {
-
-            // Move inside shuffle order
-            if (shuffleIndex < shuffleOrder.size() - 1) {
-
-                shuffleIndex++;
-
+                currentIndex = shuffleOrder.get(shuffleIndex);
+                return playlist.get(currentIndex);
             }
 
-            // Repeat shuffled playlist
+            // Normal next
+            if (hasNext()) {
+                currentIndex++;
+            }
+            // Repeat playlist
             else if (repeatPlaylist) {
-
-                generateShuffleOrder();
-
-                shuffleIndex = 0;
-
+                currentIndex = 0;
             }
-
             // End reached
             else {
-
                 throw new IllegalStateException("No next song available");
             }
 
-            currentIndex = shuffleOrder.get(shuffleIndex);
-
             return playlist.get(currentIndex);
         }
-
-        // Normal next
-        if (hasNext()) {
-
-            currentIndex++;
-
-        }
-
-        // Repeat playlist
-        else if (repeatPlaylist) {
-
-            currentIndex = 0;
-
-        }
-
-        // End reached
-        else {
-
-            throw new IllegalStateException("No next song available");
-        }
-
-        return playlist.get(currentIndex);
     }
-
-
-
 
     // Move to previous song
     public Song previousSong() {
+        synchronized (lock) {
+            // Shuffle previous
+            if (shuffleEnabled) {
+                if (shuffleIndex <= 0) {
+                    throw new IllegalStateException("No previous song available");
+                }
 
-        // Shuffle previous
-        if (shuffleEnabled) {
+                shuffleIndex--;
+                currentIndex = shuffleOrder.get(shuffleIndex);
+                return playlist.get(currentIndex);
+            }
 
-            if (shuffleIndex <= 0) {
+            // Normal playback previous
+            if (!hasPrevious()) {
                 throw new IllegalStateException("No previous song available");
             }
 
-            shuffleIndex--;
-
-            currentIndex = shuffleOrder.get(shuffleIndex);
-
+            currentIndex--;
             return playlist.get(currentIndex);
         }
-
-        // Normal playback previous
-        if (!hasPrevious()) {
-            throw new IllegalStateException("No previous song available");
-        }
-
-        currentIndex--;
-
-        return playlist.get(currentIndex);
     }
 
     // check if next song exists
     public boolean hasNext(){
-        return  currentIndex < playlist.size() -1;
+        synchronized (lock) {
+            return currentIndex < playlist.size() - 1;
+        }
     }
 
     // check if previous song exists
     public boolean hasPrevious(){
-        return currentIndex > 0;
+        synchronized (lock) {
+            return currentIndex > 0;
+        }
     }
 
     // get total playlist size
     public int size(){
-        return playlist.size();
+        synchronized (lock) {
+            return playlist.size();
+        }
     }
 
     // check if playlist is empty
     public boolean isEmpty(){
-        return playlist.isEmpty();
+        synchronized (lock) {
+            return playlist.isEmpty();
+        }
     }
 
     // print all songs
     public void showPlaylist(){
-        if (playlist.isEmpty()){
-            System.out.println("playlist is empty");
-            return;
-        }
-
-        System.out.println("----- Playlist -----");
-        for (int i = 0; i < playlist.size(); i++){
-            Song song  = playlist.get(i);
-
-            // Highlight current song
-            if (i == currentIndex){
-                System.out.println("-> [" + i + "] " + song);
+        synchronized (lock) {
+            if (playlist.isEmpty()){
+                System.out.println("playlist is empty");
+                return;
             }
-            else {
-                System.out.println("   [" + i + "] " + song);
+
+            System.out.println("----- Playlist -----");
+            for (int i = 0; i < playlist.size(); i++){
+                Song song  = playlist.get(i);
+
+                // Highlight current song
+                if (i == currentIndex){
+                    System.out.println("-> [" + i + "] " + song);
+                } else {
+                    System.out.println("   [" + i + "] " + song);
+                }
             }
         }
     }
 
     // =========================
-   // Remove Song
-  // =========================
+    // Remove Song
+    // =========================
+    public void removeSong(Song song) {
+        synchronized (lock) {
+            playlist.remove(song);
 
-    public void removeSong(
-            Song song
-    ) {
-
-        playlist.remove(song);
-
-        if (
-                currentIndex >= playlist.size()
-        ) {
-
-            currentIndex =
-                    playlist.size() - 1;
+            if (currentIndex >= playlist.size()) {
+                currentIndex = playlist.size() - 1;
+            }
         }
     }
 
     // =========================
-// Clear Playlist
-// =========================
-
+    // Clear Playlist
+    // =========================
     public void clear() {
-
-        playlist.clear();
-
-        currentIndex = -1;
+        synchronized (lock) {
+            playlist.clear();
+            currentIndex = -1;
+        }
     }
 
     public void reset() {
-
-        currentIndex = -1;
-
+        synchronized (lock) {
+            currentIndex = -1;
+        }
     }
 }

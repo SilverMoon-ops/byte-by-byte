@@ -630,27 +630,13 @@ public class SonusApplication
         // =========================
 
         stopButton.setOnAction(event -> {
-
             try {
-
                 engine.stop();
-
-                Song currentSong =
-                        playlistManager.getCurrentSong();
-
-                if (currentSong != null) {
-
-                    engine.load(currentSong);
-                }
-
                 playPauseButton.setText("▶");
-
                 progressSlider.setValue(0);
-
                 currentTimeLabel.setText("00:00");
-
+                // Don't reload until user explicitly plays
             } catch (Exception e) {
-
                 e.printStackTrace();
             }
         });
@@ -840,23 +826,23 @@ public class SonusApplication
       // =========================
 
         removeSongButton.setOnAction(event -> {
-
-            Song selectedSong =
-                    playlistView
-                            .getSelectionModel()
-                            .getSelectedItem();
+            Song selectedSong = playlistView.getSelectionModel().getSelectedItem();
 
             if (selectedSong == null) {
                 return;
             }
 
-            playlistManager.removeSong(
-                    selectedSong
-            );
+            // Stop if removing currently playing song
+            if (selectedSong.equals(playlistManager.getCurrentSong())) {
+                try {
+                    engine.stop();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
 
-            playlistItems.remove(
-                    selectedSong
-            );
+            playlistManager.removeSong(selectedSong);
+            playlistItems.remove(selectedSong);
         });
 
         // =========================
