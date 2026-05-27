@@ -9,9 +9,7 @@ import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 
-
 import java.nio.ShortBuffer;
-
 
 import org.bytedeco.ffmpeg.global.avutil;
 
@@ -25,40 +23,23 @@ public class FFmpegPlayerEngine
         implements AudioEngine {
 
     private FFmpegFrameGrabber grabber;
-
     private FFmpegFrameFilter audioFilter;
-
     private Song currentSong;
-
-    private PlayerState state =
-            PlayerState.STOPPED;
-
+    private PlayerState state = PlayerState.STOPPED;
     private SourceDataLine speakers;
-
     private Thread playbackThread;
-
     private volatile boolean playing;
-
     private Runnable onSongFinished;
-
     private Runnable onProgressUpdate;
-
     private FloatControl volumeControl;
-
-    private int currentVolume = 100;
-
-    private final Object playbackLock =
-            new Object();
-
+    private volatile double currentVolume = 1.0;
+    private final Object playbackLock = new Object();
 
     private String detectFormat(String filePath) {
         try {
             int lastDot = filePath.lastIndexOf(".");
             if (lastDot > 0) {
                 String extension = filePath.substring(lastDot + 1).toLowerCase().trim();
-
-                // Return the extension as-is, FFmpeg handles it
-                // FFmpeg recognizes: mp3, wav, m4a, aac, flac, ogg, wma, opus, etc.
                 return extension.isEmpty() ? null : extension;
             }
         } catch (Exception e) {
@@ -69,270 +50,165 @@ public class FFmpegPlayerEngine
 
     @Override
     public void load(Song song) {
-
         try {
-
             avutil.av_log_set_level(avutil.AV_LOG_FATAL);
 
 
-            stop();
-
-            grabber =
-                    new FFmpegFrameGrabber(
-                            song.getFilePath()
-                    );
+            grabber = new FFmpegFrameGrabber(song.getFilePath());
 
             String format = detectFormat(song.getFilePath());
             if (format != null) {
                 grabber.setFormat(format);
             }
 
-            grabber.setOption(
-                    "analyzeduration",
-                    "10000000"
-            );
-
-            grabber.setOption(
-                    "probesize",
-                    "5000000"
-            );
-
-            grabber.setAudioChannels(2);
-
-
+            grabber.setOption("analyzeduration", "10000000");
+            grabber.setOption("probesize", "5000000");
             grabber.start();
+            grabber.setTimestamp(0);
+            grabber.setTimestamp(0);
+
+            // ✅ WAIT before getting channels (let FFmpeg initialize)
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
 
             int channels = grabber.getAudioChannels();
 
-            audioFilter =
-                    new FFmpegFrameFilter(
+            // ✅ RELEASE old filter before creating new one
+            if (audioFilter != null) {
+                try {
+                    audioFilter.stop();
+                    audioFilter.release();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                audioFilter = null;
+            }
 
-                            "aformat=sample_fmts=s16:"
-                                    +
-                                    "channel_layouts=" + (channels == 1 ? "mono" : "stereo"),
-
-                            channels
-                    );
-
-            audioFilter.setSampleRate(
-                    grabber.getSampleRate()
+            // ✅ Create FRESH audio filter
+            audioFilter = new FFmpegFrameFilter(
+                    "aformat=sample_fmts=s16:channel_layouts=" +
+                            (channels == 1 ? "mono" : "stereo"),
+                    channels
             );
-
+            audioFilter.setSampleRate(grabber.getSampleRate());
             audioFilter.start();
 
             currentSong = song;
-
             state = PlayerState.STOPPED;
 
-            System.out.println(
-                    "Song loaded: " + song
-            );
-
-            System.out.println(
-                    "Format: "
-                            + grabber.getFormat()
-            );
-
-            System.out.println(
-                    "Duration: "
-                            +
-                            grabber.getLengthInTime()
-                                    / 1_000_000
-                            +
-                            " sec"
-            );
+            System.out.println("Song loaded: " + song);
+            System.out.println("Format: " + grabber.getFormat());
+            System.out.println("Duration: " + grabber.getLengthInTime() / 1_000_000 + " sec");
 
         } catch (FrameGrabber.Exception e) {
-
-            throw new RuntimeException(
-                    "Failed to load song",
-                    e
-            );
+            throw new RuntimeException("Failed to load song", e);
         } catch (FrameFilter.Exception e) {
-
-            throw new RuntimeException(
-                    "Failed to initialize audio filter",
-                    e
-            );
+            throw new RuntimeException("Failed to initialize audio filter", e);
         }
     }
 
     @Override
     public void play() {
-
         // Resume playback
         if (state == PlayerState.PAUSED) {
-
             if (speakers != null) {
-
                 speakers.start();
             }
-
             playing = true;
-
             state = PlayerState.PLAYING;
-
-            System.out.println(
-                    "Playback resumed"
-            );
-
+            System.out.println("Playback resumed");
             return;
         }
 
         // Ignore duplicate play clicks
         if (playing) {
-
-            System.out.println(
-                    "Song already playing"
-            );
-
+            System.out.println("Song already playing");
             return;
         }
 
         // No song loaded
         if (grabber == null) {
-
-            throw new RuntimeException(
-                    "No song loaded"
-            );
+            throw new RuntimeException("No song loaded");
         }
 
-        // Mark active BEFORE thread starts
         playing = true;
-
         state = PlayerState.PLAYING;
 
-        playbackThread =
-                new Thread(() -> {
-
-                    try {
-
-                        startPlaybackLoop();
-
-                    } catch (
-                            FrameGrabber.Exception
-                            |
-                            FrameFilter.Exception
-                            |
-                            LineUnavailableException
-                            |
-                            InterruptedException e
-                    ) {
-
-                        e.printStackTrace();
-
-                        playing = false;
-
-                        state =
-                                PlayerState.STOPPED;
-                    }
-                });
+        playbackThread = new Thread(() -> {
+            try {
+                startPlaybackLoop();
+            } catch (
+                    FrameGrabber.Exception |
+                    FrameFilter.Exception |
+                    LineUnavailableException |
+                    InterruptedException e
+            ) {
+                e.printStackTrace();
+                playing = false;
+                state = PlayerState.STOPPED;
+            }
+        });
 
         playbackThread.setDaemon(true);
-
         playbackThread.start();
 
-        System.out.println(
-                "Playing: "
-                        + currentSong
-        );
+        System.out.println("Playing: " + currentSong);
     }
 
     private void startPlaybackLoop()
-            throws
-            FrameGrabber.Exception,
-            FrameFilter.Exception,
-            LineUnavailableException,
-            InterruptedException {
+            throws FrameGrabber.Exception, FrameFilter.Exception,
+            LineUnavailableException, InterruptedException {
 
-        AudioFormat format =
-                new AudioFormat(
+        AudioFormat format = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED,
+                grabber.getSampleRate(),
+                16,
+                grabber.getAudioChannels(),
+                grabber.getAudioChannels() * 2,
+                grabber.getSampleRate(),
+                false
+        );
 
-                        AudioFormat.Encoding.PCM_SIGNED,
-
-                        grabber.getSampleRate(),
-
-                        16,
-
-                        grabber.getAudioChannels(),
-
-                        grabber.getAudioChannels() * 2,
-
-                        grabber.getSampleRate(),
-
-                        false
-                );
-
-        DataLine.Info info =
-                new DataLine.Info(
-                        SourceDataLine.class,
-                        format
-                );
-
-        speakers =
-                (SourceDataLine)
-                        AudioSystem.getLine(info);
-
+        DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+        speakers = (SourceDataLine) AudioSystem.getLine(info);
         speakers.open(format);
 
-
-        if (
-                speakers.isControlSupported(
-                        FloatControl.Type.MASTER_GAIN
-                )
-        ) {
-
-            volumeControl =
-                    (FloatControl)
-                            speakers.getControl(
-                                    FloatControl.Type.MASTER_GAIN
-                            );
+        if (speakers.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+            volumeControl = (FloatControl) speakers.getControl(FloatControl.Type.MASTER_GAIN);
         }
 
         speakers.start();
-
         long lastProgressUpdate = 0;
 
         while (true) {
 
+            if (Thread.currentThread().isInterrupted() || state == PlayerState.STOPPED) {
+                break;
+            }
+
+
             if (!playing) {
-
-                Thread.sleep(100);
-
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    break; // Exit immediately if interrupted during pause sleep
+                }
                 continue;
-            }
-
-            if (
-                    Thread.currentThread()
-                            .isInterrupted()
-            ) {
-
-                break;
-            }
-
-            if (
-                    Thread.currentThread()
-                            .isInterrupted()
-            ) {
-
-                break;
             }
 
             Frame rawFrame;
 
             synchronized (playbackLock) {
-
                 if (grabber == null) {
-
                     break;
                 }
-
-                rawFrame =
-                        grabber.grabSamples();
+                rawFrame = grabber.grabSamples();
             }
 
             if (rawFrame == null) {
-
                 break;
             }
 
@@ -340,204 +216,170 @@ public class FFmpegPlayerEngine
                 continue;
             }
 
-            ShortBuffer buffer =
-                    (ShortBuffer)
-                            rawFrame.samples[0];
+            int availableBuffers = rawFrame.samples.length;
+            byte[] audioData = new byte[0];
 
-            buffer.rewind();
+            if (rawFrame.samples.length > 0) {
+                ShortBuffer firstBuffer = (ShortBuffer) rawFrame.samples[0];
+                firstBuffer.rewind();
+                int samplesPerChannel = firstBuffer.remaining();
+                audioData = new byte[samplesPerChannel * availableBuffers * 2];
+            }
 
-            byte[] audioData =
-                    new byte[
-                            buffer.remaining() * 2
-                            ];
+            ShortBuffer[] channelBuffers = new ShortBuffer[availableBuffers];
+            for (int ch = 0; ch < availableBuffers; ch++) {
+                channelBuffers[ch] = (ShortBuffer) rawFrame.samples[ch];
+                channelBuffers[ch].rewind();
+            }
 
+            int samplesPerChannel = channelBuffers[0].remaining();
+            audioData = new byte[samplesPerChannel * availableBuffers * 2];
             int index = 0;
 
-            while (buffer.hasRemaining()) {
+            for (int sampleIndex = 0; sampleIndex < samplesPerChannel; sampleIndex++) {
+                for (int ch = 0; ch < availableBuffers; ch++) {
+                    short sample = channelBuffers[ch].get();
+                    int scaledSample = (int) (sample * currentVolume);
 
-                short sample =
-                        buffer.get();
+                    if (scaledSample > 32767) {
+                        scaledSample = 32767;
+                    } else if (scaledSample < -32768) {
+                        scaledSample = -32768;
+                    }
 
-                audioData[index++] =
-                        (byte)
-                                (sample & 0xff);
-
-                audioData[index++] =
-                        (byte)
-                                (
-                                        (sample >> 8)
-                                                & 0xff
-                                );
+                    short finalSample = (short) scaledSample;
+                    audioData[index++] = (byte) (finalSample & 0xff);
+                    audioData[index++] = (byte) ((finalSample >> 8) & 0xff);
+                }
             }
 
-            int frameSize =
-                    format.getFrameSize();
-
-            int validBytes =
-                    audioData.length
-                            -
-                            (
-                                    audioData.length
-                                            % frameSize
-                            );
+            int frameSize = format.getFrameSize();
+            int validBytes = audioData.length - (audioData.length % frameSize);
 
             if (validBytes > 0) {
-
-                speakers.write(
-                        audioData,
-                        0,
-                        validBytes
-                );
+                speakers.write(audioData, 0, validBytes);
             }
 
-            long now =
-                    System.currentTimeMillis();
-
-            if (
-                    now - lastProgressUpdate
-                            >= 500
-            ) {
-
+            long now = System.currentTimeMillis();
+            if (now - lastProgressUpdate >= 500) {
                 lastProgressUpdate = now;
-
-                if (
-                        onProgressUpdate
-                                != null
-                ) {
-
+                if (onProgressUpdate != null) {
                     onProgressUpdate.run();
                 }
             }
         }
 
-        boolean naturalFinish =
-                playing;
 
+        // This prevents native audio driver corruption during automatic playlist transitions.
+        if (playing && state != PlayerState.STOPPED) {
+            if (speakers != null) {
+                try {
+                    speakers.drain();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        boolean naturalFinish = playing;
         playing = false;
+        state = PlayerState.STOPPED;
 
-        state =
-                PlayerState.STOPPED;
-
-        if (
-                naturalFinish
-                        &&
-                        onSongFinished
-                                != null
-        ) {
-
+        if (naturalFinish && onSongFinished != null) {
             onSongFinished.run();
         }
     }
 
     @Override
     public void pause() {
-
         if (state != PlayerState.PLAYING) {
             return;
         }
 
         playing = false;
-
         state = PlayerState.PAUSED;
 
         if (speakers != null) {
             speakers.stop();
         }
 
-        System.out.println(
-                "Playback paused"
-        );
+        System.out.println("Playback paused");
     }
 
     @Override
     public void stop() {
-
         try {
-
             playing = false;
-
             state = PlayerState.STOPPED;
 
-            // Stop playback thread safely
+            // 1. UNBLOCK THE AUDIO HARDWARE FIRST!
+            // This instantly cancels any blocked speakers.write() operations.
+            if (speakers != null) {
+                speakers.stop();
+                speakers.flush();
+            }
+
+            // 2. SAFELY KILL THE THREAD
             if (playbackThread != null) {
-
                 playbackThread.interrupt();
-
-                playbackThread.join(1000);
-
+                try {
+                    // Because we flushed the speakers above, this join will
+                    // succeed instantly instead of timing out.
+                    playbackThread.join(250);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
                 playbackThread = null;
             }
 
-            // Stop speakers
+            // 3. SECURELY CLOSE THE LINE
+            // The thread is guaranteed dead now, so closing is safe.
             if (speakers != null) {
-
-                speakers.flush();
-
-                speakers.stop();
-
                 speakers.close();
-
                 speakers = null;
             }
 
-            // Release audio filter
-            if (audioFilter != null) {
+            // 4. CLEAN UP FFMPEG POINTERS
+            synchronized (playbackLock) {
+                if (audioFilter != null) {
+                    try {
+                        audioFilter.stop();
+                        audioFilter.release();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    audioFilter = null;
+                }
 
-                audioFilter.stop();
-
-                audioFilter.release();
-
-                audioFilter = null;
+                if (grabber != null) {
+                    try {
+                        grabber.stop();
+                        grabber.release();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    grabber = null;
+                }
             }
 
-            // Release grabber
-            if (grabber != null) {
+            System.out.println("Playback stopped");
 
-                grabber.stop();
-
-                grabber.release();
-
-                grabber = null;
-            }
-
-            System.out.println(
-                    "Playback stopped"
-            );
-
-        } catch (
-                InterruptedException
-                |
-                FrameFilter.Exception
-                |
-                FrameGrabber.Exception e
-        ) {
-
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     @Override
     public void seek(double seconds) {
-
         if (grabber == null) {
             return;
         }
 
         try {
-
-            long timestamp =
-                    (long)
-                            (
-                                    seconds
-                                            * 1_000_000
-                            );
-
-            grabber.setTimestamp(
-                    timestamp
-            );
+            long timestamp = (long) (seconds * 1_000_000);
+            grabber.setTimestamp(timestamp);
 
             if (speakers != null) {
-
                 speakers.flush();
             }
 
@@ -547,129 +389,77 @@ public class FFmpegPlayerEngine
                 audioFilter = null;
             }
 
-            int channels = grabber.getAudioChannels();
+            // ✅ Wait for clean state before reinitializing filter
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
 
+            int channels = grabber.getAudioChannels();
             audioFilter = new FFmpegFrameFilter(
-                    "aformat=sample_fmts=s16:channel_layouts=" + (channels == 1 ? "mono" : "stereo"),
+                    "aformat=sample_fmts=s16:channel_layouts=" +
+                            (channels == 1 ? "mono" : "stereo"),
                     channels
             );
             audioFilter.setSampleRate(grabber.getSampleRate());
             audioFilter.start();
 
-            System.out.println(
-                    "Seeked to "
-                            + seconds
-                            + " sec"
-            );
+            System.out.println("Seeked to " + seconds + " sec");
 
-        } catch (FrameGrabber.Exception | FFmpegFrameFilter.Exception e) {
-
-            throw new RuntimeException(
-                    "Failed to seek",
-                    e
-            );
+        } catch (FrameGrabber.Exception | FrameFilter.Exception e) {
+            throw new RuntimeException("Failed to seek", e);
         }
     }
 
     @Override
-    public void setVolume(
-            double volume
-    ) {
+    public void setVolume(double volume) {
+        // ✅ Validate and convert 0-100 to 0.0-1.0
+        if (volume < 0) volume = 0;
+        if (volume > 100) volume = 100;
 
-        if (volumeControl == null) {
-            return;
-        }
-
-        float min =
-                volumeControl.getMinimum();
-
-        float max =
-                volumeControl.getMaximum();
-
-        float gain =
-                (float)
-                        (
-                                min
-                                        +
-                                        (max - min)
-                                                *
-                                                (
-                                                        volume
-                                                                / 100.0
-                                                )
-                        );
-
-        volumeControl.setValue(gain);
-
-        currentVolume =
-                (int) volume;
+        currentVolume = volume / 100.0;
 
         System.out.println(
-                "Volume set to "
-                        +
-                        currentVolume
-                        +
-                        "%"
+                "Volume set to " + (int) volume +
+                        "% (multiplier: " + String.format("%.2f", currentVolume) + ")"
         );
     }
 
     @Override
     public int getVolume() {
-
-        return currentVolume;
+        return (int) (currentVolume * 100);
     }
 
     @Override
     public double getCurrentTime() {
-
-        if (grabber == null) {
-            return 0;
-        }
-
-        return
-                grabber.getTimestamp()
-                        / 1_000_000.0;
+        if (grabber == null) return 0;
+        return grabber.getTimestamp() / 1_000_000.0;
     }
 
     @Override
     public double getTotalDuration() {
-
-        if (grabber == null) {
-            return 0;
-        }
-
-        return
-                grabber.getLengthInTime()
-                        / 1_000_000.0;
+        if (grabber == null) return 0;
+        return grabber.getLengthInTime() / 1_000_000.0;
     }
 
     @Override
     public Song getCurrentSong() {
-
         return currentSong;
     }
 
     @Override
     public PlayerState getState() {
-
         return state;
     }
 
     @Override
-    public void setOnSongFinished(
-            Runnable callback
-    ) {
-
-        this.onSongFinished =
-                callback;
+    public void setOnSongFinished(Runnable callback) {
+        this.onSongFinished = callback;
     }
 
     @Override
-    public void setOnProgressUpdate(
-            Runnable callback
-    ) {
-
-        this.onProgressUpdate =
-                callback;
+    public void setOnProgressUpdate(Runnable callback) {
+        this.onProgressUpdate = callback;
     }
 }

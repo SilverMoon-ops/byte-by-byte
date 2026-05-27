@@ -355,6 +355,36 @@ public class PlaylistManager {
         }
     }
 
+    // =========================
+   // Remove Song
+  // =========================
+
+    public void removeSong(
+            Song song
+    ) {
+
+        playlist.remove(song);
+
+        if (
+                currentIndex >= playlist.size()
+        ) {
+
+            currentIndex =
+                    playlist.size() - 1;
+        }
+    }
+
+    // =========================
+// Clear Playlist
+// =========================
+
+    public void clear() {
+
+        playlist.clear();
+
+        currentIndex = -1;
+    }
+
     public void reset() {
 
         currentIndex = -1;
