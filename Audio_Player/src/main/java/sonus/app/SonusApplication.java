@@ -7,7 +7,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 
@@ -16,6 +15,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 
 import javafx.scene.control.ListView;
 import javafx.collections.FXCollections;
@@ -23,20 +24,26 @@ import javafx.collections.ObservableList;
 
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import javafx.stage.Stage;
 import javafx.scene.control.ToolBar;
 import javafx.stage.FileChooser;
 import javafx.stage.DirectoryChooser;
+import javafx.collections.transformation.FilteredList;
+import javafx.scene.control.TextField;
 
 import sonus.core.AudioEngine;
 import sonus.core.FFmpegPlayerEngine;
 import sonus.core.PlayerState;
 import sonus.core.PlaylistManager;
+import sonus.service.PlaylistStorageService;
+import sonus.model.SavedPlaybackState;
 
 import sonus.model.Song;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
@@ -47,6 +54,8 @@ public class SonusApplication
         extends Application {
 
     private boolean seeking = false;
+
+    private VBox queueSection;
 
     private final AudioEngine engine =
             new FFmpegPlayerEngine();
@@ -72,6 +81,34 @@ public class SonusApplication
         PlaylistManager playlistManager =
                 new PlaylistManager();
 
+        // =========================
+       // Playlist Storage
+      // =========================
+
+        PlaylistStorageService
+                playlistStorageService =
+                new PlaylistStorageService();
+
+        // =========================
+       // Load Saved Playlist
+      // =========================
+
+        SavedPlaybackState state =
+                playlistStorageService
+                        .loadPlaybackState();
+
+        List<Song> savedSongs =
+                state.getPlaylist();
+
+        List<Song> savedQueue =
+                state.getQueue();
+
+        for (Song song : savedSongs) {
+
+            playlistManager.addSong(song);
+        }
+
+
 
         // =========================
        // Playlist View Data
@@ -82,18 +119,197 @@ public class SonusApplication
                         playlistManager.getSongs()
                 );
 
+        ObservableList<Song> queueItems =
+                FXCollections.observableArrayList();
+
+        queueItems.addAll(
+                savedQueue
+        );
+
+        for (Song song : savedQueue) {
+
+            playlistManager.addToQueue(
+                    song
+            );
+        }
+
+
+       // Filtered Playlist
+
+        FilteredList<Song> filteredSongs =
+                new FilteredList<>(
+                        playlistItems,
+                        song -> true
+                );
+
         // =========================
        // Playlist View
       // =========================
 
         ListView<Song> playlistView =
-                new ListView<>(playlistItems);
+                new ListView<>(filteredSongs);
 
-        playlistView.setPrefWidth(300);
+        playlistView.setPrefWidth(700);
 
-        // =========================
+        playlistView.setMaxWidth(
+                Double.MAX_VALUE
+        );
+
+        ListView<Song> queueView =
+                new ListView<>(queueItems);
+
+        queueView.setPrefWidth(700);
+
+        queueView.setPrefHeight(500);
+
+        queueView.setMaxWidth(
+                Double.MAX_VALUE
+        );
+
+        queueView.setPlaceholder(
+
+                new Label(
+                        "No queued songs"
+                )
+        );
+
+        ContextMenu playlistContextMenu =
+                new ContextMenu();
+
+        MenuItem queueSongItem =
+                new MenuItem(
+                        "Add To Queue"
+                );
+
+        playlistContextMenu.getItems().add(
+                queueSongItem
+        );
+
+        playlistView.setContextMenu(
+                playlistContextMenu
+        );
+
+        queueSongItem.setOnAction(event -> {
+
+            Song selectedSong =
+                    playlistView
+                            .getSelectionModel()
+                            .getSelectedItem();
+
+            if (selectedSong == null) {
+                return;
+            }
+
+            playlistManager.addToQueue(
+                    selectedSong
+            );
+
+            queueItems.add(
+                    selectedSong
+            );
+        });
+
+        ContextMenu queueContextMenu =
+                new ContextMenu();
+
+        MenuItem removeQueueItem =
+                new MenuItem(
+                        "Remove From Queue"
+                );
+
+        MenuItem clearQueueItem =
+                new MenuItem(
+                        "Clear Queue"
+                );
+
+        queueContextMenu.getItems().addAll(
+
+                removeQueueItem,
+
+                clearQueueItem
+        );
+
+        queueView.setContextMenu(
+                queueContextMenu
+        );
+
+        queueView.setOnDragDetected(event -> {
+
+            Song selectedSong =
+                    queueView
+                            .getSelectionModel()
+                            .getSelectedItem();
+
+            if (selectedSong == null) {
+                return;
+            }
+        });
+
+
        // Current Song Display
-      // =========================
+
+
+
+        // Search Bar
+
+
+        TextField searchField =
+                new TextField();
+
+        searchField.setPromptText(
+                "Search songs..."
+        );
+
+
+        // Search Filtering
+
+
+        searchField.textProperty().addListener(
+
+                (observable, oldValue, newValue) -> {
+
+                    filteredSongs.setPredicate(song -> {
+
+                        // =========================
+                        // Empty Search
+                        // =========================
+
+                        if (
+                                newValue == null
+                                        ||
+                                        newValue.trim().isEmpty()
+                        ) {
+
+                            return true;
+                        }
+
+                        String search =
+                                String.valueOf(newValue)
+                                        .toLowerCase();
+
+                        // =========================
+                        // Match Title
+                        // =========================
+
+                        if (
+                                song.getTitle()
+                                        .toLowerCase()
+                                        .contains(search)
+                        ) {
+
+                            return true;
+                        }
+
+                        // =========================
+                        // Match Artist
+                        // =========================
+
+                        return song.getArtist()
+                                .toLowerCase()
+                                .contains(search);
+                    });
+                }
+        );
 
         Label nowPlayingLabel =
                 new Label("Now Playing");
@@ -169,6 +385,8 @@ public class SonusApplication
 
                     Song nextSong =
                             playlistManager.nextSong();
+
+                    queueItems.remove(nextSong);
 
                     if (nextSong == null) {
                         return;
@@ -538,6 +756,16 @@ public class SonusApplication
         Button nextButton =
                 new Button("⏭");
 
+        Button queueButton =
+                new Button("Queue");
+
+        Button removeQueueButton =
+                new Button("Remove Queue");
+
+        Button clearQueueButton =
+                new Button("Clear Queue");
+
+
         previousButton.setPrefSize(50, 40);
 
         playPauseButton.setPrefSize(50, 40);
@@ -549,6 +777,13 @@ public class SonusApplication
         shuffleButton.setPrefSize(50, 40);
 
         repeatButton.setPrefSize(50, 40);
+
+        queueButton.setPrefSize(70, 40);
+
+        removeQueueButton.setPrefSize(120, 40);
+
+        clearQueueButton.setPrefSize(120, 40);
+
 
         // =========================
         // Play / Pause Logic
@@ -652,6 +887,8 @@ public class SonusApplication
 
                 Song nextSong =
                         playlistManager.nextSong();
+
+                queueItems.remove(nextSong);
 
                 engine.stop();
 
@@ -845,6 +1082,98 @@ public class SonusApplication
             playlistItems.remove(selectedSong);
         });
 
+
+        // Queue Selected Song
+
+        queueButton.setOnAction(event -> {
+
+            boolean visible =
+                    queueSection.isVisible();
+
+            queueSection.setVisible(
+                    !visible
+            );
+
+            queueSection.setManaged(
+                    !visible
+            );
+        });
+
+
+       // Add Song To Queue
+
+
+        queueSongItem.setOnAction(event -> {
+
+            Song selectedSong =
+                    playlistView
+                            .getSelectionModel()
+                            .getSelectedItem();
+
+            if (selectedSong == null) {
+                return;
+            }
+
+            playlistManager.addToQueue(
+                    selectedSong
+            );
+
+            queueItems.add(
+                    selectedSong
+            );
+        });
+
+        removeQueueButton.setOnAction(event -> {
+
+            Song selectedSong =
+                    queueView
+                            .getSelectionModel()
+                            .getSelectedItem();
+
+            if (selectedSong == null) {
+                return;
+            }
+
+            playlistManager.removeFromQueue(
+                    selectedSong
+            );
+
+            queueItems.remove(
+                    selectedSong
+            );
+        });
+
+        clearQueueButton.setOnAction(event -> {
+
+            playlistManager.clearQueue();
+
+            queueItems.clear();
+        });
+
+        queueView.setOnMouseClicked(event -> {
+
+            if (event.getClickCount() == 2) {
+
+                Song selectedSong =
+                        queueView
+                                .getSelectionModel()
+                                .getSelectedItem();
+
+                if (selectedSong == null) {
+                    return;
+                }
+
+                playlistManager.removeFromQueue(
+                        selectedSong
+                );
+
+                queueItems.remove(
+                        selectedSong
+                );
+            }
+        });
+
+
         // =========================
        // Clear Playlist
       // =========================
@@ -881,11 +1210,12 @@ public class SonusApplication
 
         // =========================
         // Controls Layout
-        // =========================
+        // ========================
 
-        HBox controls =
+        HBox playbackControls =
                 new HBox(
-                        20,
+
+                        12,
 
                         shuffleButton,
 
@@ -900,19 +1230,19 @@ public class SonusApplication
                         repeatButton
                 );
 
-        controls.setAlignment(
+        playbackControls.setAlignment(
                 Pos.CENTER
         );
 
-        // =========================
-        // Progress Layout
-        // =========================
-
         HBox progressSection =
                 new HBox(
+
                         10,
+
                         currentTimeLabel,
+
                         progressSlider,
+
                         totalTimeLabel
                 );
 
@@ -920,16 +1250,32 @@ public class SonusApplication
                 Pos.CENTER
         );
 
-        // =========================
-        // Bottom Section
-        // =========================
+
+
+        HBox controlsRow =
+                new HBox(
+
+                        20,
+
+                        playbackControls,
+
+                        volumeSection
+                );
+
+        controlsRow.setAlignment(
+                Pos.CENTER
+        );
+
+
 
         VBox bottomSection =
                 new VBox(
-                        12,
+
+                        8,
+
                         progressSection,
-                        controls,
-                        volumeSection
+
+                        controlsRow
                 );
 
         bottomSection.setAlignment(
@@ -937,8 +1283,9 @@ public class SonusApplication
         );
 
         bottomSection.setPadding(
-                new Insets(15)
+                new Insets(8)
         );
+
 
         // =========================
        // Toolbar
@@ -955,7 +1302,10 @@ public class SonusApplication
 
                         removeSongButton,
 
-                        clearPlaylistButton
+                        clearPlaylistButton,
+
+                        queueButton
+
                 );
 
         // =========================
@@ -975,7 +1325,7 @@ public class SonusApplication
         );
 
         topSection.setPadding(
-                new Insets(20)
+                new Insets(10)
         );
 
         // =========================
@@ -992,7 +1342,76 @@ public class SonusApplication
                 );
 
         root.setTop(topContainer);
-        root.setCenter(playlistView);
+
+       // Playlist Section
+
+
+        VBox playlistSection =
+                new VBox(
+
+                        10,
+
+                        searchField,
+
+                        playlistView
+                );
+
+        Label queueLabel =
+                new Label("Queue");
+
+// Group buttons horizontally
+        VBox queueControls =
+                new VBox(
+
+                        10,
+
+                        removeQueueButton,
+
+                        clearQueueButton
+                );
+
+// Stack them neatly inside the section layout
+        queueSection =
+                new VBox(
+
+                        10,
+
+                        queueLabel,
+
+                        queueView,
+
+                        queueControls
+                );
+
+        queueSection.setPrefWidth(250);
+
+
+          // Hide Queue By Default
+
+
+        queueSection.setVisible(false);
+
+        queueSection.setManaged(false);
+
+        HBox centerSection =
+                new HBox(
+
+                        10,
+
+                        playlistSection,
+
+                        queueSection
+                );
+
+        root.setCenter(centerSection);
+
+        HBox.setHgrow(
+
+                playlistSection,
+
+                Priority.ALWAYS
+        );
+
         root.setBottom(bottomSection);
 
         // =========================
@@ -1213,6 +1632,25 @@ public class SonusApplication
         stage.setScene(scene);
 
         stage.show();
+
+        // =========================
+       // Save Playlist On Exit
+      // =========================
+
+        stage.setOnCloseRequest(event -> {
+
+            playlistStorageService
+                    .savePlaybackState(
+
+                            new ArrayList<>(
+                                    playlistItems
+                            ),
+
+                            new ArrayList<>(
+                                    queueItems
+                            )
+                    );
+        });
     }
 
     // =========================

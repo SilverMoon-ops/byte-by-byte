@@ -1,30 +1,33 @@
 package sonus.core;
 
 import sonus.model.Song;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
+import java.util.Stack;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class PlaylistManager {
 
-    // Store Songs
     private final List<Song> playlist;
     private boolean repeatSingleSong;
     private boolean shuffleEnabled;
     private List<Integer> shuffleOrder;
     private int shuffleIndex;
     private boolean repeatPlaylist;
-
-    // Track Current Song position
     private int currentIndex;
 
-    // STEP 1 Added: Gatekeeper lock for thread safety
+    // Track historical indices safely
+    private final Stack<Integer> playbackHistory = new Stack<>();
+    private final Queue<Song>
+            playbackQueue = new LinkedList<>();
+
     private final Object lock = new Object();
 
     public PlaylistManager(){
         this.playlist = new ArrayList<>();
-        this.currentIndex = -1; // no song selected initially
+        this.currentIndex = -1;
         this.repeatPlaylist = false;
         this.repeatSingleSong = false;
         this.shuffleEnabled = false;
@@ -42,34 +45,26 @@ public class PlaylistManager {
         }
     }
 
-    // add song to playlist
     public void addSong(Song song) {
         if (song == null) {
             throw new IllegalArgumentException("Song cannot be null");
         }
-
         synchronized (lock) {
             if (containsSong(song.getFilePath())) {
                 System.out.println("Song already exists in playlist");
                 return;
             }
-
             playlist.add(song);
             System.out.println("Added to playlist: " + song);
 
-            // Auto-select first song
             if (currentIndex == -1) {
                 currentIndex = 0;
             }
         }
     }
 
-    // =========================
-    // Get Playlist Songs
-    // =========================
     public List<Song> getSongs() {
         synchronized (lock) {
-            // Return a copy so external components can't break the original list unsafely
             return new ArrayList<>(playlist);
         }
     }
@@ -82,20 +77,24 @@ public class PlaylistManager {
 
             Song removedSong = playlist.remove(index);
 
-            // Fix current index
+            // Adjust current index dynamically
             if (playlist.isEmpty()) {
                 currentIndex = -1;
-            } else if (index < currentIndex) {
-                currentIndex--;
-            } else if (index == currentIndex) {
-                if (currentIndex >= playlist.size()) {
-                    currentIndex = playlist.size() - 1;
+                playbackHistory.clear();
+            } else {
+                if (index < currentIndex) {
+                    currentIndex--;
+                } else if (index == currentIndex) {
+                    if (currentIndex >= playlist.size()) {
+                        currentIndex = playlist.size() - 1;
+                    }
                 }
+                // Wipe history entries pointing to dead indices safely
+                playbackHistory.removeElement(index);
             }
 
             System.out.println("Removed: " + removedSong);
 
-            // Regenerate shuffle if enabled
             if (shuffleEnabled) {
                 generateShuffleOrder();
                 shuffleIndex = 0;
@@ -103,14 +102,30 @@ public class PlaylistManager {
         }
     }
 
+    // FIX 1: Added back the Object-based removeSong method your UI calls!
+    public void removeSong(Song song) {
+        synchronized (lock) {
+            int index = playlist.indexOf(song);
+            if (index != -1) {
+                removeSong(index); // Routes directly into our safe index remover logic
+            }
+        }
+    }
+
     public void clearPlaylist() {
         synchronized (lock) {
             playlist.clear();
+            shuffleOrder.clear();
+            playbackHistory.clear();
             currentIndex = -1;
         }
     }
 
-    // get current song
+    // FIX 2: Added back the clear() alias method your UI calls!
+    public void clear() {
+        clearPlaylist(); // Routes directly into our main clear logic
+    }
+
     public Song getCurrentSong(){
         synchronized (lock) {
             if(playlist.isEmpty() || currentIndex == -1){
@@ -120,49 +135,39 @@ public class PlaylistManager {
         }
     }
 
-    // =========================
-    // Set Current Song
-    // =========================
     public void setCurrentSong(Song song) {
         synchronized (lock) {
-            currentIndex = playlist.indexOf(song);
+            int index = playlist.indexOf(song);
+            if (index != -1) {
+                if (currentIndex >= 0) {
+                    playbackHistory.push(currentIndex); // Track explicit selections
+                }
+                currentIndex = index;
+            }
         }
     }
 
     public void setRepeatPlaylist(boolean repeatPlaylist) {
-        synchronized (lock) {
-            this.repeatPlaylist = repeatPlaylist;
-        }
+        synchronized (lock) { this.repeatPlaylist = repeatPlaylist; }
     }
 
     public boolean isRepeatPlaylist() {
-        synchronized (lock) {
-            return repeatPlaylist;
-        }
+        synchronized (lock) { return repeatPlaylist; }
     }
 
     public void setRepeatSingleSong(boolean repeatSingleSong) {
-        synchronized (lock) {
-            this.repeatSingleSong = repeatSingleSong;
-        }
+        synchronized (lock) { this.repeatSingleSong = repeatSingleSong; }
     }
 
     public boolean isRepeatSingleSong() {
-        synchronized (lock) {
-            return repeatSingleSong;
-        }
+        synchronized (lock) { return repeatSingleSong; }
     }
 
     public void enableShuffle() {
         synchronized (lock) {
-            if (playlist.isEmpty()) {
-                return;
-            }
-
+            if (playlist.isEmpty()) return;
             shuffleEnabled = true;
             generateShuffleOrder();
-
-            // Keep current song position synced
             shuffleIndex = 0;
             System.out.println("Shuffle enabled");
         }
@@ -178,74 +183,96 @@ public class PlaylistManager {
     }
 
     public boolean isShuffleEnabled() {
-        synchronized (lock) {
-            return shuffleEnabled;
-        }
+        synchronized (lock) { return shuffleEnabled; }
     }
 
-    // Called inside other synchronized methods, but uses the lock for extra internal safety
     private void generateShuffleOrder() {
         shuffleOrder.clear();
-
-        // Current song stays first
-        shuffleOrder.add(currentIndex);
-
+        if (currentIndex >= 0 && currentIndex < playlist.size()) {
+            shuffleOrder.add(currentIndex);
+        }
         List<Integer> remaining = new ArrayList<>();
-
-        // Add remaining songs
         for (int i = 0; i < playlist.size(); i++) {
             if (i != currentIndex) {
                 remaining.add(i);
             }
         }
-
-        // Shuffle remaining songs
         Collections.shuffle(remaining);
-
-        // Combine lists
         shuffleOrder.addAll(remaining);
     }
 
-    // Move to next song
     public Song nextSong() {
         synchronized (lock) {
+
+            if (!playbackQueue.isEmpty()) {
+
+                Song queuedSong =
+                        playbackQueue.poll();
+
+                int queuedIndex =
+                        playlist.indexOf(
+                                queuedSong
+                        );
+
+                if (queuedIndex >= 0) {
+
+                    playbackHistory.push(
+                            currentIndex
+                    );
+
+                    currentIndex =
+                            queuedIndex;
+
+                    if (shuffleEnabled) {
+
+                        int sIdx =
+                                shuffleOrder.indexOf(
+                                        currentIndex
+                                );
+
+                        if (sIdx >= 0) {
+
+                            shuffleIndex = sIdx;
+                        }
+                    }
+                }
+
+                return queuedSong;
+            }
+
             if (playlist.isEmpty()) {
                 throw new IllegalStateException("Playlist is empty");
             }
-            // Repeat current song
-            if (repeatSingleSong) {
+            if (repeatSingleSong && currentIndex >= 0) {
                 return playlist.get(currentIndex);
             }
-            // Shuffle playback
+
+            // Always capture current track in history before changing
+            if (currentIndex >= 0) {
+                playbackHistory.push(currentIndex);
+            }
+
             if (shuffleEnabled) {
-                // Move inside shuffle order
                 if (shuffleIndex < shuffleOrder.size() - 1) {
                     shuffleIndex++;
-                }
-                // Repeat shuffled playlist
-                else if (repeatPlaylist) {
+                } else if (repeatPlaylist) {
                     generateShuffleOrder();
                     shuffleIndex = 0;
-                }
-                // End reached
-                else {
+                } else {
+                    playbackHistory.pop(); // Revert push since move failed
                     throw new IllegalStateException("No next song available");
                 }
-
                 currentIndex = shuffleOrder.get(shuffleIndex);
                 return playlist.get(currentIndex);
             }
 
-            // Normal next
+            // Normal linear tracking logic
             if (hasNext()) {
                 currentIndex++;
-            }
-            // Repeat playlist
-            else if (repeatPlaylist) {
+            } else if (repeatPlaylist) {
                 currentIndex = 0;
-            }
-            // End reached
-            else {
+            } else {
+                playbackHistory.pop(); // Revert push since move failed
                 throw new IllegalStateException("No next song available");
             }
 
@@ -253,71 +280,64 @@ public class PlaylistManager {
         }
     }
 
-    // Move to previous song
     public Song previousSong() {
         synchronized (lock) {
-            // Shuffle previous
-            if (shuffleEnabled) {
-                if (shuffleIndex <= 0) {
-                    throw new IllegalStateException("No previous song available");
-                }
+            if (playlist.isEmpty()) {
+                throw new IllegalStateException("Playlist is empty");
+            }
 
-                shuffleIndex--;
-                currentIndex = shuffleOrder.get(shuffleIndex);
+            // True history tracking using our Stack state
+            if (!playbackHistory.isEmpty()) {
+                currentIndex = playbackHistory.pop();
+
+                // Keep shuffle index in lockstep if shuffle is active
+                if (shuffleEnabled) {
+                    int sIdx = shuffleOrder.indexOf(currentIndex);
+                    if (sIdx != -1) {
+                        shuffleIndex = sIdx;
+                    }
+                }
                 return playlist.get(currentIndex);
             }
 
-            // Normal playback previous
-            if (!hasPrevious()) {
-                throw new IllegalStateException("No previous song available");
+            // Fallback strategy if stack history is empty
+            if (shuffleEnabled) {
+                if (shuffleIndex <= 0) throw new IllegalStateException("No previous track history");
+                shuffleIndex--;
+                currentIndex = shuffleOrder.get(shuffleIndex);
+            } else {
+                if (!hasPrevious()) throw new IllegalStateException("No previous track history");
+                currentIndex--;
             }
 
-            currentIndex--;
             return playlist.get(currentIndex);
         }
     }
 
-    // check if next song exists
     public boolean hasNext(){
-        synchronized (lock) {
-            return currentIndex < playlist.size() - 1;
-        }
+        synchronized (lock) { return currentIndex < playlist.size() - 1; }
     }
 
-    // check if previous song exists
     public boolean hasPrevious(){
         synchronized (lock) {
-            return currentIndex > 0;
+            // Better check: Can go back if history exists OR index is greater than 0
+            return !playbackHistory.isEmpty() || currentIndex > 0;
         }
     }
 
-    // get total playlist size
-    public int size(){
-        synchronized (lock) {
-            return playlist.size();
-        }
-    }
+    public int size(){ synchronized (lock) { return playlist.size(); } }
 
-    // check if playlist is empty
-    public boolean isEmpty(){
-        synchronized (lock) {
-            return playlist.isEmpty();
-        }
-    }
+    public boolean isEmpty(){ synchronized (lock) { return playlist.isEmpty(); } }
 
-    // print all songs
     public void showPlaylist(){
         synchronized (lock) {
             if (playlist.isEmpty()){
-                System.out.println("playlist is empty");
+                System.out.println("Playlist is empty");
                 return;
             }
-
             System.out.println("----- Playlist -----");
             for (int i = 0; i < playlist.size(); i++){
                 Song song  = playlist.get(i);
-
-                // Highlight current song
                 if (i == currentIndex){
                     System.out.println("-> [" + i + "] " + song);
                 } else {
@@ -327,32 +347,79 @@ public class PlaylistManager {
         }
     }
 
-    // =========================
-    // Remove Song
-    // =========================
-    public void removeSong(Song song) {
-        synchronized (lock) {
-            playlist.remove(song);
+   // Queue Song
 
-            if (currentIndex >= playlist.size()) {
-                currentIndex = playlist.size() - 1;
+
+    public void addToQueue(
+            Song song
+    ) {
+
+        synchronized (lock) {
+
+            if (song == null) {
+                return;
             }
+
+            playbackQueue.offer(song);
         }
     }
 
-    // =========================
-    // Clear Playlist
-    // =========================
-    public void clear() {
+
+    // Remove From Queue
+
+
+    public void removeFromQueue(
+            Song song
+    ) {
+
         synchronized (lock) {
-            playlist.clear();
-            currentIndex = -1;
+
+            playbackQueue.remove(song);
+        }
+    }
+
+
+     // Clear Queue
+
+
+    public void clearQueue() {
+
+        synchronized (lock) {
+
+            playbackQueue.clear();
+        }
+    }
+
+
+      // Get Queue
+
+
+    public List<Song> getQueue() {
+
+        synchronized (lock) {
+
+            return new ArrayList<>(
+                    playbackQueue
+            );
+        }
+    }
+
+
+     // Has Queue
+
+
+    public boolean hasQueuedSongs() {
+
+        synchronized (lock) {
+
+            return !playbackQueue.isEmpty();
         }
     }
 
     public void reset() {
         synchronized (lock) {
             currentIndex = -1;
+            playbackHistory.clear();
         }
     }
 }
