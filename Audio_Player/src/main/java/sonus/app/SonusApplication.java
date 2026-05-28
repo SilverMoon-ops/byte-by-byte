@@ -17,6 +17,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
+import javafx.scene.image.ImageView;
 
 import javafx.scene.control.ListView;
 import javafx.collections.FXCollections;
@@ -1208,9 +1209,297 @@ public class SonusApplication
             playPauseButton.setText("▶");
         });
 
-        // =========================
-        // Controls Layout
-        // ========================
+
+        // =====================================================================
+        // 1. Sleek Left Sidebar (Reduced Width Rail)
+        // =====================================================================
+
+        VBox sidebar =
+                new VBox(
+
+                        12
+                );
+
+        // Adjusted width down by ~20%
+        sidebar.setPrefWidth(145);
+
+        sidebar.setPadding(
+
+                new Insets(
+
+                        20,
+
+                        10,
+
+                        20,
+
+                        10
+                )
+        );
+
+        sidebar.setAlignment(
+
+                Pos.TOP_LEFT
+        );
+
+        Label libraryHeader =
+                new Label(
+
+                        "MEDIA"
+                );
+
+        Label queueHeader =
+                new Label(
+
+                        "UTILITIES"
+                );
+
+        // Constrain buttons to safely fill the new narrower rail width
+        addSongButton.setMaxWidth(
+                Double.MAX_VALUE
+        );
+
+        addMultipleButton.setMaxWidth(
+                Double.MAX_VALUE
+        );
+
+        addFolderButton.setMaxWidth(
+                Double.MAX_VALUE
+        );
+
+        removeSongButton.setMaxWidth(
+                Double.MAX_VALUE
+        );
+
+        clearPlaylistButton.setMaxWidth(
+                Double.MAX_VALUE
+        );
+
+        queueButton.setMaxWidth(
+                Double.MAX_VALUE
+        );
+
+        sidebar.getChildren()
+                .addAll(
+
+                        libraryHeader,
+
+                        addSongButton,
+
+                        addMultipleButton,
+
+                        addFolderButton,
+
+                        new Label(""),
+
+                        queueHeader,
+
+                        queueButton,
+
+                        removeSongButton,
+
+                        clearPlaylistButton
+                );
+
+
+        // =====================================================================
+        // 2. Now Playing Display (With New Album Artwork Canvas Architecture)
+        // =====================================================================
+
+        nowPlayingLabel.setText(
+                "NOW PLAYING"
+        );
+
+        // Layout canvas placeholder for cover art
+        ImageView albumArtView =
+                new ImageView();
+
+        albumArtView.setFitWidth(
+                65
+        );
+
+        albumArtView.setFitHeight(
+                65
+        );
+
+        VBox metadataTextSection =
+                new VBox(
+
+                        4,
+
+                        nowPlayingLabel,
+
+                        songTitleLabel,
+
+                        artistLabel
+                );
+
+        HBox nowPlayingHeader =
+                new HBox(
+
+                        15,
+
+                        albumArtView,
+
+                        metadataTextSection
+                );
+
+        nowPlayingHeader.setAlignment(
+
+                Pos.CENTER_LEFT
+        );
+
+        nowPlayingHeader.setPadding(
+
+                new Insets(
+
+                        0,
+
+                        0,
+
+                        10,
+
+                        0
+                )
+        );
+
+
+        // =====================================================================
+        // 3. Center Content Area (Playlist & Dynamic Queue Panels)
+        // =====================================================================
+
+        VBox playlistSection =
+                new VBox(
+
+                        12,
+
+                        nowPlayingHeader,
+
+                        searchField,
+
+                        playlistView
+                );
+
+        VBox.setVgrow(
+
+                playlistView,
+
+                Priority.ALWAYS
+        );
+
+        Label queueLabel =
+                new Label(
+                        "QUEUE"
+                );
+
+        // Compacted queue utility controls
+        removeQueueButton.setPrefSize(100, 30);
+
+        clearQueueButton.setPrefSize(100, 30);
+
+        HBox queueControls =
+                new HBox(
+
+                        10,
+
+                        removeQueueButton,
+
+                        clearQueueButton
+                );
+
+        queueControls.setAlignment(
+                Pos.CENTER
+        );
+
+        queueSection =
+                new VBox(
+
+                        10,
+
+                        queueLabel,
+
+                        queueView,
+
+                        queueControls
+                );
+
+        queueSection.setPrefWidth(250);
+
+        // Allow queue to dynamically grow vertically without forcing stiff heights
+        VBox.setVgrow(
+
+                queueView,
+
+                Priority.ALWAYS
+        );
+
+        queueSection.setVisible(false);
+
+        queueSection.setManaged(false);
+
+        HBox centerSection =
+                new HBox(
+
+                        15,
+
+                        playlistSection,
+
+                        queueSection
+                );
+
+        HBox.setHgrow(
+
+                playlistSection,
+
+                Priority.ALWAYS
+        );
+
+        centerSection.setPadding(
+
+                new Insets(
+
+                        15,
+
+                        15,
+
+                        15,
+
+                        0
+                )
+        );
+
+
+        // =====================================================================
+        // 4. Unified Bottom Control Bar Setup
+        // =====================================================================
+
+        progressSlider.setMaxWidth(
+                Double.MAX_VALUE
+        );
+
+        HBox.setHgrow(
+
+                progressSlider,
+
+                Priority.ALWAYS
+        );
+
+        HBox progressSection =
+                new HBox(
+
+                        10,
+
+                        currentTimeLabel,
+
+                        progressSlider,
+
+                        totalTimeLabel
+                );
+
+        progressSection.setAlignment(
+
+                Pos.CENTER
+        );
 
         HBox playbackControls =
                 new HBox(
@@ -1234,24 +1523,6 @@ public class SonusApplication
                 Pos.CENTER
         );
 
-        HBox progressSection =
-                new HBox(
-
-                        10,
-
-                        currentTimeLabel,
-
-                        progressSlider,
-
-                        totalTimeLabel
-                );
-
-        progressSection.setAlignment(
-                Pos.CENTER
-        );
-
-
-
         HBox controlsRow =
                 new HBox(
 
@@ -1266,12 +1537,10 @@ public class SonusApplication
                 Pos.CENTER
         );
 
-
-
         VBox bottomSection =
                 new VBox(
 
-                        8,
+                        10,
 
                         progressSection,
 
@@ -1283,136 +1552,29 @@ public class SonusApplication
         );
 
         bottomSection.setPadding(
-                new Insets(8)
+                new Insets(12)
         );
 
 
-        // =========================
-       // Toolbar
-      // =========================
-
-        ToolBar toolBar =
-                new ToolBar(
-
-                        addSongButton,
-
-                        addMultipleButton,
-
-                        addFolderButton,
-
-                        removeSongButton,
-
-                        clearPlaylistButton,
-
-                        queueButton
-
-                );
-
-        // =========================
-       // Top Section
-      // =========================
-
-        VBox topSection =
-                new VBox(
-                        5,
-                        nowPlayingLabel,
-                        songTitleLabel,
-                        artistLabel
-                );
-
-        topSection.setAlignment(
-                Pos.CENTER
-        );
-
-        topSection.setPadding(
-                new Insets(10)
-        );
-
-        // =========================
-        // Root Layout
-        // =========================
+        // =====================================================================
+        // 5. Master Root Frame Assembly
+        // =====================================================================
 
         BorderPane root =
                 new BorderPane();
 
-        VBox topContainer =
-                new VBox(
-                        toolBar,
-                        topSection
-                );
-
-        root.setTop(topContainer);
-
-       // Playlist Section
-
-
-        VBox playlistSection =
-                new VBox(
-
-                        10,
-
-                        searchField,
-
-                        playlistView
-                );
-
-        Label queueLabel =
-                new Label("Queue");
-
-// Group buttons horizontally
-        VBox queueControls =
-                new VBox(
-
-                        10,
-
-                        removeQueueButton,
-
-                        clearQueueButton
-                );
-
-// Stack them neatly inside the section layout
-        queueSection =
-                new VBox(
-
-                        10,
-
-                        queueLabel,
-
-                        queueView,
-
-                        queueControls
-                );
-
-        queueSection.setPrefWidth(250);
-
-
-          // Hide Queue By Default
-
-
-        queueSection.setVisible(false);
-
-        queueSection.setManaged(false);
-
-        HBox centerSection =
-                new HBox(
-
-                        10,
-
-                        playlistSection,
-
-                        queueSection
-                );
-
-        root.setCenter(centerSection);
-
-        HBox.setHgrow(
-
-                playlistSection,
-
-                Priority.ALWAYS
+        // Eliminated topContainer layout block entirely to prevent upper row crowding
+        root.setLeft(
+                sidebar
         );
 
-        root.setBottom(bottomSection);
+        root.setCenter(
+                centerSection
+        );
+
+        root.setBottom(
+                bottomSection
+        );
 
         // =========================
         // Scene

@@ -897,20 +897,5 @@
       "duration": 68
     }
   ],
-  "queue": [
-    {
-      "filePath": "D:\\A Summer\u0027s End - Hong Kong 1986\\2_30AM (VHS skyline) - Crystal Cola - A Summer_s End OST(MP3_128K).mp3",
-      "title": "2:30AM (VHS skyline) - Crystal Cola - A Summer\u0027s End OST",
-      "artist": "MisterNamelessDude",
-      "format": "mp3",
-      "duration": 266
-    },
-    {
-      "filePath": "D:\\SUMMER\u0027S GONE\\Summer_s Gone - Water Girl by YOUTH 83(MP3_128K).mp3",
-      "title": "Summer\u0027s Gone - Water Girl by YOUTH 83",
-      "artist": "Dead",
-      "format": "mp3",
-      "duration": 273
-    }
-  ]
+  "queue": []
 }
