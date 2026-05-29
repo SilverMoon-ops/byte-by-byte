@@ -7,6 +7,7 @@ public class Song {
     private final String format;
     private final long duration;
 
+
     public Song(String filePath, String title, String artist, String format, long duration) {
         if (filePath == null || filePath.isEmpty()) {
             throw new IllegalArgumentException("File path cannot be null or empty");
@@ -36,9 +37,14 @@ public class Song {
         return format;
     }
 
+    public String getExtension() {
+        return format;
+    }
+
     public long getDuration() {
         return duration;
     }
+
 
     public String getFormattedDuration() {
 
