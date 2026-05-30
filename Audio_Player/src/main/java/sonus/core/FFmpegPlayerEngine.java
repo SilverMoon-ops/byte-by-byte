@@ -33,7 +33,15 @@ public class FFmpegPlayerEngine
     private Runnable onProgressUpdate;
     private FloatControl volumeControl;
     private volatile double currentVolume = 1.0;
+    private volatile double currentSpeed = 1.0;
+    private volatile boolean speedChanged = false;// Default normal speed
     private final Object playbackLock = new Object();
+    private volatile double lastReportedTime = 0.0;
+    private volatile boolean isSeeking = false;
+    private volatile double timestampOffset = 0.0;// ✅ Tracks the delta between target seek and FFmpeg packet position
+    private volatile boolean seekOccurred = false;
+    private volatile boolean seekRequested = false;
+    private volatile double seekTargetSeconds = 0.0;
 
     private String detectFormat(String filePath) {
         try {
@@ -52,7 +60,6 @@ public class FFmpegPlayerEngine
     public void load(Song song) {
         try {
             avutil.av_log_set_level(avutil.AV_LOG_FATAL);
-
 
             grabber = new FFmpegFrameGrabber(song.getFilePath());
 
@@ -89,12 +96,18 @@ public class FFmpegPlayerEngine
 
             // ✅ Create FRESH audio filter
             audioFilter = new FFmpegFrameFilter(
-                    "aformat=sample_fmts=s16:channel_layouts=" +
+                    "atempo=" + currentSpeed + ",aformat=sample_fmts=s16:channel_layouts=" +
                             (channels == 1 ? "mono" : "stereo"),
                     channels
             );
             audioFilter.setSampleRate(grabber.getSampleRate());
             audioFilter.start();
+
+            lastReportedTime = 0.0; // Reset tracking
+            isSeeking = false;
+            timestampOffset = 0.0; // Reset offset
+
+            this.speedChanged = false;
 
             currentSong = song;
             state = PlayerState.STOPPED;
@@ -112,12 +125,11 @@ public class FFmpegPlayerEngine
 
     @Override
     public void play() {
-        // 1. THIS IS THE KEY UNIFYING LOCK THAT MAKES IT SNIPPET 1
         synchronized (playbackLock) {
             // Resume playback
             if (state == PlayerState.PAUSED) {
                 if (speakers != null) {
-                    speakers.start();
+                    speakers.start(); // Start the audio hardware back up
                 }
                 playing = true;
                 state = PlayerState.PLAYING;
@@ -126,7 +138,7 @@ public class FFmpegPlayerEngine
             }
 
             // Ignore duplicate play clicks
-            if (playing) {
+            if (state == PlayerState.PLAYING) {
                 System.out.println("Song already playing");
                 return;
             }
@@ -138,7 +150,7 @@ public class FFmpegPlayerEngine
 
             playing = true;
             state = PlayerState.PLAYING;
-        } // 2. LOCK ENDS HERE
+        }
 
         playbackThread = new Thread(() -> {
             try {
@@ -147,7 +159,6 @@ public class FFmpegPlayerEngine
                      LineUnavailableException | InterruptedException e) {
                 e.printStackTrace();
 
-                // 3. ALSO SNIPPET 1: It re-locks to safely handle errors
                 synchronized (playbackLock) {
                     playing = false;
                     state = PlayerState.STOPPED;
@@ -187,93 +198,197 @@ public class FFmpegPlayerEngine
             speakers.start();
             long lastProgressUpdate = 0;
 
-            // --- ALL OF YOUR ORIGINAL DECODING CODE IS INSIDE HERE ---
             while (true) {
-
                 if (Thread.currentThread().isInterrupted() || state == PlayerState.STOPPED) {
                     break;
                 }
 
-                if (!playing) {
+                // 🛑 PAUSE INTERCEPTOR: If paused, wait here until unpaused or stopped
+                while (state == PlayerState.PAUSED) {
                     try {
-                        Thread.sleep(50);
+                        Thread.sleep(20); // Sleep for 20ms to keep CPU usage at 0%
                     } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                         break;
                     }
-                    continue;
+                    // If the user stops the song while paused, break out immediately
+                    if (state == PlayerState.STOPPED) {
+                        break;
+                    }
+                }
+
+                // 1. SAFE ZONE: Handle Seek Requests Atomically on the Playback Thread
+                if (seekRequested) {
+                    synchronized (playbackLock) {
+                        if (grabber != null) {
+                            try {
+                                long timestamp = (long) (seekTargetSeconds * 1_000_000);
+                                grabber.setTimestamp(timestamp);
+
+                                // Fully stop and close the old filter graph natively
+                                if (audioFilter != null) {
+                                    audioFilter.stop();
+                                    audioFilter.close();
+                                }
+
+                                // Rebuild a clean filter instance on the correct thread
+                                int channels = grabber.getAudioChannels();
+                                audioFilter = new FFmpegFrameFilter(
+                                        "atempo=" + currentSpeed + ",aformat=sample_fmts=s16:channel_layouts=" +
+                                                (channels == 1 ? "mono" : "stereo"),
+                                        channels
+                                );
+                                audioFilter.setSampleRate(grabber.getSampleRate());
+                                audioFilter.start();
+
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        seekRequested = false;
+                    }
+                    continue; // Jump straight to the next iteration to grab frames from the new position
+                }
+
+                if (speedChanged) {
+                    synchronized (playbackLock) {
+                        if (grabber != null) {
+                            try {
+                                if (audioFilter != null) {
+                                    audioFilter.stop();
+                                    audioFilter.close();
+                                }
+                                int channels = grabber.getAudioChannels();
+                                audioFilter = new FFmpegFrameFilter(
+                                        "atempo=" + currentSpeed + ",aformat=sample_fmts=s16:channel_layouts=" +
+                                                (channels == 1 ? "mono" : "stereo"),
+                                        channels
+                                );
+                                audioFilter.start();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        speedChanged = false; // Reset flag after successful rebuild
+                    }
                 }
 
                 Frame rawFrame;
-
                 synchronized (playbackLock) {
                     if (grabber == null) {
                         break;
                     }
                     rawFrame = grabber.grabSamples();
+
+                    // ✅ Calculate precise post-seek offset immediately when the first fresh frame is read
+                    if (isSeeking && rawFrame != null) {
+                        double grabberTime = grabber.getTimestamp() / 1_000_000.0;
+                        timestampOffset = grabberTime - lastReportedTime;
+                        isSeeking = false;
+                    }
                 }
 
                 if (rawFrame == null) {
-                    break;
+                    break; // End of audio stream file reaching natural finish
                 }
 
                 if (rawFrame.samples == null) {
                     continue;
                 }
 
-                int availableBuffers = rawFrame.samples.length;
-                byte[] audioData = new byte[0];
-
-                if (rawFrame.samples.length > 0) {
-                    ShortBuffer firstBuffer = (ShortBuffer) rawFrame.samples[0];
-                    firstBuffer.rewind();
-                    int samplesPerChannel = firstBuffer.remaining();
-                    audioData = new byte[samplesPerChannel * availableBuffers * 2];
-                }
-
-                ShortBuffer[] channelBuffers = new ShortBuffer[availableBuffers];
-                for (int ch = 0; ch < availableBuffers; ch++) {
-                    channelBuffers[ch] = (ShortBuffer) rawFrame.samples[ch];
-                    channelBuffers[ch].rewind();
-                }
-
-                int samplesPerChannel = channelBuffers[0].remaining();
-                audioData = new byte[samplesPerChannel * availableBuffers * 2];
-                int index = 0;
-
-                for (int sampleIndex = 0; sampleIndex < samplesPerChannel; sampleIndex++) {
-                    for (int ch = 0; ch < availableBuffers; ch++) {
-                        short sample = channelBuffers[ch].get();
-                        int scaledSample = (int) (sample * currentVolume);
-
-                        if (scaledSample > 32767) {
-                            scaledSample = 32767;
-                        } else if (scaledSample < -32768) {
-                            scaledSample = -32768;
-                        }
-
-                        short finalSample = (short) scaledSample;
-                        audioData[index++] = (byte) (finalSample & 0xff);
-                        audioData[index++] = (byte) ((finalSample >> 8) & 0xff);
+                // 1. PUSH raw frames securely into the filter processing graph
+                synchronized (playbackLock) {
+                    if (audioFilter != null) {
+                        audioFilter.push(rawFrame);
                     }
                 }
 
-                int frameSize = format.getFrameSize();
-                int validBytes = audioData.length - (audioData.length % frameSize);
+                // 2. PULL modified, time-stretched frames out of the filter processing graph
+                while (true) {
+                    Frame filteredFrame;
+                    synchronized (playbackLock) {
+                        if (audioFilter == null) {
+                            break;
+                        }
+                        filteredFrame = audioFilter.pull();
+                    }
 
-                if (validBytes > 0) {
-                    speakers.write(audioData, 0, validBytes);
+                    if (filteredFrame == null) {
+                        break; // No more filtered frames available out of this chunk
+                    }
+
+                    if (filteredFrame.samples == null) {
+                        continue;
+                    }
+
+                    // Process the processed, pitch-corrected sample sets directly
+                    int availableBuffers = filteredFrame.samples.length;
+                    ShortBuffer[] channelBuffers = new ShortBuffer[availableBuffers];
+                    for (int ch = 0; ch < availableBuffers; ch++) {
+                        channelBuffers[ch] = (ShortBuffer) filteredFrame.samples[ch];
+                        channelBuffers[ch].rewind();
+                    }
+
+                    int samplesPerChannel = channelBuffers[0].remaining();
+                    byte[] audioData = new byte[samplesPerChannel * availableBuffers * 2];
+                    int index = 0;
+
+                    for (int sampleIndex = 0; sampleIndex < samplesPerChannel; sampleIndex++) {
+                        for (int ch = 0; ch < availableBuffers; ch++) {
+                            short sample = channelBuffers[ch].get();
+                            int scaledSample = (int) (sample * currentVolume);
+
+                            if (scaledSample > 32767) {
+                                scaledSample = 32767;
+                            } else if (scaledSample < -32768) {
+                                scaledSample = -32768;
+                            }
+
+                            short finalSample = (short) scaledSample;
+                            audioData[index++] = (byte) (finalSample & 0xff);
+                            audioData[index++] = (byte) ((finalSample >> 8) & 0xff);
+                        }
+                    }
+
+                    int frameSize = format.getFrameSize();
+                    int validBytes = audioData.length - (audioData.length % frameSize);
+
+                    if (validBytes > 0) {
+                        speakers.write(audioData, 0, validBytes);
+                    }
                 }
 
+                // =====================================================================
+                // ✅ UPDATED WORKER CALL: Smooth Offset Tracking & Monotonic Filtering
+                // =====================================================================
                 long now = System.currentTimeMillis();
                 if (now - lastProgressUpdate >= 500) {
                     lastProgressUpdate = now;
                     if (onProgressUpdate != null) {
+                        synchronized (playbackLock) {
+                            if (grabber != null) {
+                                // While seeking settles, keep lastReportedTime exactly at the user's targeted position
+                                if (!isSeeking) {
+                                    double grabberTime = grabber.getTimestamp() / 1_000_000.0;
+                                    double correctedTime = grabberTime - timestampOffset;
+
+                                    if (correctedTime > lastReportedTime) {
+                                        lastReportedTime = correctedTime;
+                                    }
+
+                                    // Hard limit to avoid drifting past song duration bounds
+                                    double duration = getTotalDuration();
+                                    if (duration > 0 && lastReportedTime > duration) {
+                                        lastReportedTime = duration;
+                                    }
+                                }
+                            }
+                        }
                         onProgressUpdate.run();
                     }
                 }
-            } // --- END OF WHILE LOOP ---
+            }
 
-            // Smooth transition handling
             if (playing && state != PlayerState.STOPPED) {
                 if (speakers != null) {
                     try {
@@ -297,7 +412,6 @@ public class FFmpegPlayerEngine
             }
 
         } finally {
-            // This is the safety net from Snippet 2 that guarantees clean closure!
             if (speakers != null) {
                 try {
                     speakers.close();
@@ -311,39 +425,36 @@ public class FFmpegPlayerEngine
 
     @Override
     public void pause() {
-        if (state != PlayerState.PLAYING) {
-            return;
+        synchronized (playbackLock) {
+            if (state != PlayerState.PLAYING) {
+                return;
+            }
+
+            // Keep playing = true so the thread loop stays alive!
+            state = PlayerState.PAUSED;
+
+            if (speakers != null) {
+                speakers.stop();
+                speakers.flush(); // Clear out residual audio data to prevent pop/buzzing sounds
+            }
+
+            System.out.println("Playback paused");
         }
-
-        playing = false;
-        state = PlayerState.PAUSED;
-
-        if (speakers != null) {
-            speakers.stop();
-        }
-
-        System.out.println("Playback paused");
     }
-
     @Override
     public void stop() {
         try {
             playing = false;
             state = PlayerState.STOPPED;
 
-            // 1. UNBLOCK THE AUDIO HARDWARE FIRST!
-            // This instantly cancels any blocked speakers.write() operations.
             if (speakers != null) {
                 speakers.stop();
                 speakers.flush();
             }
 
-            // 2. SAFELY KILL THE THREAD
             if (playbackThread != null) {
                 playbackThread.interrupt();
                 try {
-                    // Because we flushed the speakers above, this join will
-                    // succeed instantly instead of timing out.
                     playbackThread.join(250);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -351,14 +462,11 @@ public class FFmpegPlayerEngine
                 playbackThread = null;
             }
 
-            // 3. SECURELY CLOSE THE LINE
-            // The thread is guaranteed dead now, so closing is safe.
             if (speakers != null) {
                 speakers.close();
                 speakers = null;
             }
 
-            // 4. CLEAN UP FFMPEG POINTERS
             synchronized (playbackLock) {
                 if (audioFilter != null) {
                     try {
@@ -387,75 +495,29 @@ public class FFmpegPlayerEngine
             e.printStackTrace();
         }
     }
+
     @Override
     public void seek(double seconds) {
-        if (grabber == null) {
-            return;
-        }
-
-        int channels;
-        int sampleRate; // Changed type to int to match what setSampleRate expects
-
-        // --- FIRST LOCK: Jump timestamp and release old filter ---
         synchronized (playbackLock) {
-            try {
-                long timestamp = (long) (seconds * 1_000_000);
-                grabber.setTimestamp(timestamp);
+            if (grabber == null) return;
 
-                if (speakers != null) {
-                    speakers.flush();
-                }
+            seekTargetSeconds = seconds;
+            seekRequested = true;
+            isSeeking = true;
+            lastReportedTime = seconds;
 
-                if (audioFilter != null) {
-                    audioFilter.stop();
-                    audioFilter.release();
-                    audioFilter = null;
-                }
-
-                // Save these variables while locked; cast sample rate to int
-                channels = grabber.getAudioChannels();
-                sampleRate = (int) grabber.getSampleRate();
-
-            } catch (FrameGrabber.Exception | FrameFilter.Exception e) {
-                throw new RuntimeException("Failed to initiate seek", e);
-            }
-        } // Lock is released here!
-
-        // --- SAFE ZONE: Sleep happens here while other threads can run ---
-        try {
-            Thread.sleep(50);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return;
-        }
-
-        // --- SECOND LOCK: Safely rebuild the audio filter ---
-        synchronized (playbackLock) {
-            // Double-check grabber wasn't closed or nullified during the sleep
-            if (grabber == null) {
-                return;
+            // Instantly dump old samples waiting in the soundcard hardware
+            // to prevent overlapping audio/pops
+            if (speakers != null) {
+                speakers.flush();
             }
 
-            try {
-                audioFilter = new FFmpegFrameFilter(
-                        "aformat=sample_fmts=s16:channel_layouts=" +
-                                (channels == 1 ? "mono" : "stereo"),
-                        channels
-                );
-                audioFilter.setSampleRate(sampleRate); // This will compile perfectly now!
-                audioFilter.start();
-
-                System.out.println("Seeked to " + seconds + " sec");
-
-            } catch (FrameFilter.Exception e) {
-                throw new RuntimeException("Failed to finalize seek filter", e);
-            }
+            System.out.println("Seek requested to " + seconds + " sec");
         }
     }
 
     @Override
     public void setVolume(double volume) {
-        // ✅ Validate and convert 0-100 to 0.0-1.0
         if (volume < 0) volume = 0;
         if (volume > 100) volume = 100;
 
@@ -474,8 +536,7 @@ public class FFmpegPlayerEngine
 
     @Override
     public double getCurrentTime() {
-        if (grabber == null) return 0;
-        return grabber.getTimestamp() / 1_000_000.0;
+        return lastReportedTime;
     }
 
     @Override
@@ -502,5 +563,18 @@ public class FFmpegPlayerEngine
     @Override
     public void setOnProgressUpdate(Runnable callback) {
         this.onProgressUpdate = callback;
+    }
+
+    @Override
+    public void setSpeed(double speed) {
+        if (speed < 0.5) speed = 0.5;
+        if (speed > 2.0) speed = 2.0;
+        this.currentSpeed = speed;
+        this.speedChanged = true;
+    }
+
+    @Override
+    public double getSpeed() {
+        return this.currentSpeed;
     }
 }

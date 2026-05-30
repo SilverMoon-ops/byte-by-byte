@@ -33,4 +33,7 @@ public interface AudioEngine {
     void setOnProgressUpdate(
             Runnable callback
     );
+
+    void setSpeed(double speed);
+    double getSpeed();
 }
