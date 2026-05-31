@@ -1,0 +1,207 @@
+.root {
+    -fx-background-color: linear-gradient(
+            to bottom,
+            #1f2027,
+            #16171c
+    );
+}
+.button {
+
+    -fx-background-color:
+        linear-gradient(
+            to bottom,
+            #323540,
+            #262831
+        );
+
+    -fx-text-fill: white;
+
+    -fx-background-radius: 14;
+
+    -fx-border-radius: 14;
+
+    -fx-border-color: rgba(255,255,255,0.08);
+
+    -fx-border-width: 1;
+
+    -fx-cursor: hand;
+}
+
+.button:hover {
+
+    -fx-background-color:
+        linear-gradient(
+            to bottom,
+            #3a3d49,
+            #2e313b
+        );
+}
+
+.button:pressed {
+
+    -fx-background-color:
+        linear-gradient(
+            to bottom,
+            #24262f,
+            #1e2028
+        );
+}
+.card {
+
+    -fx-background-color:
+        linear-gradient(
+            to bottom,
+            #2a2c36,
+            #23252e
+        );
+
+    -fx-background-radius: 20;
+
+    -fx-border-radius: 20;
+
+    -fx-border-color: rgba(255,255,255,0.06);
+
+    -fx-border-width: 1;
+
+    -fx-padding: 15;
+}
+
+.label {
+    -fx-text-fill: #ffffff;
+}
+
+.text {
+    -fx-fill: #ffffff;
+}
+.search-field {
+
+    -fx-background-color: #252833;
+
+    -fx-text-fill: white;
+
+    -fx-prompt-text-fill: #8f96a3;
+
+    -fx-background-radius: 14;
+
+    -fx-border-radius: 14;
+
+    -fx-border-color: rgba(255,255,255,0.08);
+
+    -fx-padding: 8 14;
+}
+.playlist-view {
+
+    -fx-background-color: #25262d;
+
+    -fx-background-radius: 14;
+
+    -fx-border-radius: 14;
+
+    -fx-border-color: #353845;
+}
+.playlist-view .list-cell {
+
+    -fx-background-color: transparent;
+
+    -fx-text-fill: #ffffff;
+
+    -fx-padding: 8 12 8 12;
+}
+.playlist-view .list-cell:selected {
+
+    -fx-background-color: #3b82f6;
+
+    -fx-text-fill: white;
+}
+.playlist-view .list-cell:hover {
+
+    -fx-background-color: #313340;
+}
+/* =========================
+   Context Menu
+   ========================= */
+
+.context-menu {
+
+    -fx-background-color: #242730;
+
+    -fx-background-radius: 14;
+
+    -fx-background-insets: 0;
+
+    -fx-border-color: #3b4150;
+
+    -fx-border-radius: 14;
+
+    -fx-padding: 6;
+
+     -fx-effect: dropshadow(
+         gaussian,
+         rgba(0,0,0,0.35),
+         12,
+         0.15,
+         0,
+         3
+     );
+}
+
+.menu-item {
+
+    -fx-background-radius: 10;
+
+    -fx-padding: 10 16;
+}
+
+.menu-item .label {
+
+    -fx-text-fill: white;
+
+    -fx-font-size: 13px;
+}
+
+.menu-item:focused {
+
+    -fx-background-color: #3d7eff;
+
+    -fx-background-radius: 10;
+}
+.menu-button {
+
+    -fx-background-color:
+        linear-gradient(
+            to bottom,
+            #323540,
+            #262831
+        );
+
+    -fx-text-fill: white;
+
+    -fx-background-radius: 12;
+
+    -fx-border-radius: 12;
+
+    -fx-border-color: rgba(255,255,255,0.08);
+
+    -fx-padding: 4 10;
+}
+
+.menu-button:hover {
+
+    -fx-background-color:
+        linear-gradient(
+            to bottom,
+            #3a3d49,
+            #2e313b
+        );
+}
+
+.menu-button .arrow {
+
+    -fx-background-color: white;
+
+}
+
+.menu-item:focused .label {
+
+    -fx-text-fill: white;
+}

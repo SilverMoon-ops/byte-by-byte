@@ -179,6 +179,9 @@ public class SonusApplication
         playlistView.setMaxWidth(
                 Double.MAX_VALUE
         );
+        playlistView
+                .getStyleClass()
+                .add("playlist-view");
 
         StackPane playlistContainer = new StackPane(playlistView);
 
@@ -192,6 +195,10 @@ public class SonusApplication
         queueView.setMaxWidth(
                 Double.MAX_VALUE
         );
+
+        queueView
+                .getStyleClass()
+                .add("queue-view");
 
         queueView.setPlaceholder(
 
@@ -483,6 +490,10 @@ public class SonusApplication
         TextField searchField =
                 new TextField();
 
+        searchField
+                .getStyleClass()
+                .add("search-field");
+
         searchField.setPromptText(
                 "Search songs..."
         );
@@ -528,6 +539,10 @@ public class SonusApplication
         // =====================================================================
         MenuButton sortButton = new MenuButton("Sort");
 
+        sortButton
+                .getStyleClass()
+                .add("glass-button");
+
         MenuItem sortByTitle = new MenuItem("Title");
         MenuItem sortByArtist = new MenuItem("Artist");
         MenuItem sortByDuration = new MenuItem("Duration");
@@ -559,6 +574,10 @@ public class SonusApplication
         // View Dropdown Menu & Cell Factory Layout Switcher (VLC Style - 3 View Modes)
         // =====================================================================
         MenuButton viewButton = new MenuButton("Playlist View");
+
+        viewButton
+                .getStyleClass()
+                .add("glass-button");
 
         MenuItem viewCompact = new MenuItem("Compact List");
         MenuItem viewDetailed = new MenuItem("Detailed Rows");
@@ -594,80 +613,215 @@ public class SonusApplication
         });
 
         playlistView.setCellFactory(lv -> new ListCell<Song>() {
+
             @Override
-            protected void updateItem(Song song, boolean empty) {
-                super.updateItem(song, empty);
+            protected void updateItem(
+                    Song song,
+                    boolean empty
+            ) {
 
-                if (empty || song == null) {
+                super.updateItem(
+                        song,
+                        empty
+                );
+
+                if (
+                        empty ||
+                                song == null
+                ) {
+
                     setText(null);
+
                     setGraphic(null);
-                } else {
-                    if ("Compact".equals(currentViewMode)) {
-                        Label textLabel = new Label(song.getTitle() + " - " + song.getArtist());
-                        Label durationLabel = new Label(formatTime(song.getDuration()));
-                        durationLabel.setStyle("-fx-text-fill: #888888;");
 
-                        HBox cellLayout = new HBox(textLabel, durationLabel);
-                        HBox.setHgrow(textLabel, Priority.ALWAYS);
-                        cellLayout.setAlignment(Pos.CENTER_LEFT);
-
-                        setGraphic(cellLayout);
-                        setText(null);
-                    } else {
-                        // Detailed View Layout (Includes artwork thumbnail layout)
-                        HBox cellLayout = new HBox(12);
-                        cellLayout.setAlignment(Pos.CENTER_LEFT);
-                        cellLayout.setPadding(new Insets(4, 0, 4, 0));
-
-                        // Create Row Thumbnail Image Container
-                        StackPane thumbContainer = new StackPane();
-                        thumbContainer.setPrefSize(40, 40);
-                        thumbContainer.setStyle("-fx-background-color: #333333; -fx-background-radius: 4px;");
-
-                        Label musicNote = new Label("🎵");
-                        musicNote.setStyle("-fx-text-fill: #666666; -fx-font-size: 14px;");
-
-                        ImageView thumbView = new ImageView();
-                        thumbView.setFitWidth(40);
-                        thumbView.setFitHeight(40);
-                        thumbView.setPreserveRatio(true);
-
-                        // Round thumbnail cover edges slightly
-                        javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(40, 40);
-                        clip.setArcWidth(6);
-                        clip.setArcHeight(6);
-                        thumbView.setClip(clip);
-
-                        // Tag image view to verify async loading index integrity
-                        thumbView.getProperties().put("filePath", song.getFilePath());
-                        lazyLoadArtwork(song.getFilePath(), thumbView, 40);
-
-                        thumbContainer.getChildren().addAll(musicNote, thumbView);
-
-                        VBox textStack = new VBox(2);
-                        Label titleLabel = new Label(song.getTitle());
-                        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
-
-                        Label artistLabel = new Label(song.getArtist());
-                        artistLabel.setStyle("-fx-text-fill: #666666; -fx-font-size: 11px;");
-                        textStack.getChildren().addAll(titleLabel, artistLabel);
-
-                        Label extLabel = new Label(song.getExtension().toUpperCase());
-                        extLabel.setStyle("-fx-text-fill: #ffffff; -fx-background-color: #555555; -fx-padding: 2 6; -fx-background-radius: 4; -fx-font-size: 10px; -fx-font-weight: bold;");
-
-                        Label durationLabel = new Label(formatTime(song.getDuration()));
-                        durationLabel.setStyle("-fx-text-fill: #333333; -fx-background-color: #e0e0e0; -fx-padding: 2 6; -fx-background-radius: 4; -fx-font-size: 11px;");
-
-                        HBox badgeSection = new HBox(8, extLabel, durationLabel);
-                        badgeSection.setAlignment(Pos.CENTER_RIGHT);
-
-                        HBox.setHgrow(textStack, Priority.ALWAYS);
-                        cellLayout.getChildren().addAll(thumbContainer, textStack, badgeSection);
-
-                        setGraphic(cellLayout);
-                        setText(null);
-                    }
+                    return;
                 }
+
+                // =========================================
+                // Compact View
+                // =========================================
+
+                if (
+                        "Compact".equals(
+                                currentViewMode
+                        )
+                ) {
+
+                    Label textLabel =
+                            new Label(
+                                    song.getTitle()
+                                            + " - "
+                                            + song.getArtist()
+                            );
+
+                    textLabel.setStyle(
+                            "-fx-text-fill: white;"
+                    );
+
+                    Label durationLabel =
+                            new Label(
+                                    formatTime(
+                                            song.getDuration()
+                                    )
+                            );
+
+                    durationLabel.setStyle(
+                            "-fx-text-fill: #b0b7c3;"
+                    );
+
+                    HBox cellLayout =
+                            new HBox(
+                                    textLabel,
+                                    durationLabel
+                            );
+
+                    HBox.setHgrow(
+                            textLabel,
+                            Priority.ALWAYS
+                    );
+
+                    cellLayout.setAlignment(
+                            Pos.CENTER_LEFT
+                    );
+
+                    setGraphic(
+                            cellLayout
+                    );
+
+                    setText(null);
+
+                    return;
+                }
+
+                // =========================================
+                // Detailed View
+                // =========================================
+
+                HBox cellLayout = new HBox(12);
+                cellLayout.setAlignment(Pos.CENTER_LEFT);
+                cellLayout.setPadding(new Insets(4, 0, 4, 0));
+
+                // Create Row Thumbnail Image Container
+                StackPane thumbContainer = new StackPane();
+                thumbContainer.setPrefSize(40, 40);
+                thumbContainer.setStyle("-fx-background-color: #333333; -fx-background-radius: 4px;");
+
+                Label musicNote = new Label("🎵");
+                musicNote.setStyle("-fx-text-fill: #666666; -fx-font-size: 14px;");
+
+                ImageView thumbView = new ImageView();
+
+                // --- VERIFY / UPDATE THESE SIZES TO 40 ---
+                thumbView.setFitWidth(40);
+                thumbView.setFitHeight(40);
+                thumbView.setPreserveRatio(true);
+
+                // Round thumbnail cover edges slightly
+                javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(40, 40);
+                clip.setArcWidth(6);
+                clip.setArcHeight(6);
+                thumbView.setClip(clip);
+
+                // Tag image view to verify async loading index integrity
+                thumbView.getProperties().put("filePath", song.getFilePath());
+
+                // --- ENSURE THIS CALL PASSES 40 ---
+                lazyLoadArtwork(song.getFilePath(), thumbView, 40);
+
+                thumbContainer.getChildren().addAll(musicNote, thumbView);
+
+                // Text Section
+
+                VBox textStack =
+                        new VBox(
+                                2
+                        );
+
+                Label titleLabel =
+                        new Label(
+                                song.getTitle()
+                        );
+
+                titleLabel.setStyle(
+                        "-fx-font-weight: bold;" +
+                                "-fx-font-size: 13px;" +
+                                "-fx-text-fill: white;"
+                );
+
+                Label artistLabel =
+                        new Label(
+                                song.getArtist()
+                        );
+
+                artistLabel.setStyle(
+                        "-fx-text-fill: #b0b7c3;" +
+                                "-fx-font-size: 11px;"
+                );
+
+                textStack.getChildren().addAll(
+                        titleLabel,
+                        artistLabel
+                );
+
+                // Badges
+
+                Label extLabel =
+                        new Label(
+                                song.getExtension()
+                                        .toUpperCase()
+                        );
+
+                extLabel.setStyle(
+                        "-fx-text-fill: white;" +
+                                "-fx-background-color: #4a4f5e;" +
+                                "-fx-padding: 2 6;" +
+                                "-fx-background-radius: 4;" +
+                                "-fx-font-size: 10px;" +
+                                "-fx-font-weight: bold;"
+                );
+
+                Label durationLabel =
+                        new Label(
+                                formatTime(
+                                        song.getDuration()
+                                )
+                        );
+
+                durationLabel.setStyle(
+                        "-fx-text-fill: white;" +
+                                "-fx-background-color: #3a3f4d;" +
+                                "-fx-padding: 2 6;" +
+                                "-fx-background-radius: 4;" +
+                                "-fx-font-size: 11px;"
+                );
+
+                HBox badgeSection =
+                        new HBox(
+                                8,
+                                extLabel,
+                                durationLabel
+                        );
+
+                badgeSection.setAlignment(
+                        Pos.CENTER_RIGHT
+                );
+
+                HBox.setHgrow(
+                        textStack,
+                        Priority.ALWAYS
+                );
+
+                cellLayout.getChildren().addAll(
+                        thumbContainer,
+                        textStack,
+                        badgeSection
+                );
+
+                setGraphic(
+                        cellLayout
+                );
+
+                setText(null);
             }
         });
 
@@ -1778,6 +1932,10 @@ public class SonusApplication
                 Pos.CENTER_LEFT
         );
 
+        nowPlayingHeader
+                .getStyleClass()
+                .add("card");
+
         nowPlayingHeader.setPadding(
                 new Insets(
                         0,
@@ -1967,6 +2125,12 @@ public class SonusApplication
                         900,
                         600
                 );
+
+        scene.getStylesheets().add(
+                getClass()
+                        .getResource("/css/sonus.css")
+                        .toExternalForm()
+        );
 
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             // Only toggle playback if the search bar isn't being typed into
@@ -2356,8 +2520,12 @@ public class SonusApplication
     // Lazy Load Artwork Asynchronously (Prevents list scrolling lag)
     // =====================================================================
     private void lazyLoadArtwork(String filePath, ImageView imageView, double size) {
-        if (artworkCache.containsKey(filePath)) {
-            imageView.setImage(artworkCache.get(filePath));
+        // 1. Generate size-specific key
+        String cacheKey = filePath + "_" + (int) size;
+
+        // 2. Check cache using the new key
+        if (artworkCache.containsKey(cacheKey)) {
+            imageView.setImage(artworkCache.get(cacheKey));
             return;
         }
 
@@ -2371,7 +2539,9 @@ public class SonusApplication
                     org.jaudiotagger.tag.images.Artwork artwork = tag.getFirstArtwork();
                     if (artwork != null && artwork.getBinaryData() != null) {
                         Image image = new Image(new java.io.ByteArrayInputStream(artwork.getBinaryData()), size, size, true, true);
-                        artworkCache.put(filePath, image);
+
+                        // 3. Store valid image with the new key
+                        artworkCache.put(cacheKey, image);
 
                         Platform.runLater(() -> {
                             // Verify image container is still expecting this specific file track
@@ -2385,7 +2555,8 @@ public class SonusApplication
             } catch (Exception e) {
                 // Read exception handled gracefully, fallback used
             }
-            artworkCache.put(filePath, null); // Log null to prevent broken file scanning loop
+            // 4. Store null fallback with the new key
+            artworkCache.put(cacheKey, null);
         }).start();
     }
 
@@ -2401,47 +2572,52 @@ public class SonusApplication
         tilePane.setHgap(15);
         tilePane.setVgap(15);
         tilePane.setPadding(new Insets(12));
-        tilePane.setAlignment(Pos.TOP_LEFT);
+
+        // FIX 1: Center the grid rows inside the window (Spotify/Apple Music style)
+        tilePane.setAlignment(Pos.TOP_CENTER);
 
         for (Song song : playlistView.getItems()) {
             VBox card = new VBox(8);
             card.setAlignment(Pos.CENTER);
-            card.setPadding(new Insets(10));
+            card.setPadding(new Insets(10, 8, 10, 8)); // Denser vertical & horizontal padding
             card.setStyle("-fx-background-color: #2b2b2b; -fx-background-radius: 8px; -fx-cursor: hand;");
-            card.setPrefWidth(125);
-            card.setMaxWidth(125);
+
+            // FIX 2: Shrink card width boundaries from 150 to 140 for a tighter, denser feel
+            card.setPrefWidth(140);
+            card.setMaxWidth(140);
 
             StackPane artHolder = new StackPane();
-            artHolder.setPrefSize(105, 105);
+            artHolder.setPrefSize(140, 140);
             artHolder.setStyle("-fx-background-color: #1a1a1a; -fx-background-radius: 6px;");
 
             Label fallbackIcon = new Label("🎵");
             fallbackIcon.setStyle("-fx-text-fill: #444444; -fx-font-size: 28px;");
 
             ImageView cardArt = new ImageView();
-            cardArt.setFitWidth(105);
-            cardArt.setFitHeight(105);
+            cardArt.setFitWidth(140);
+            cardArt.setFitHeight(140);
             cardArt.setPreserveRatio(true);
 
-            javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(105, 105);
+            javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(140, 140);
             clip.setArcWidth(8);
             clip.setArcHeight(8);
             cardArt.setClip(clip);
 
             cardArt.getProperties().put("filePath", song.getFilePath());
-            lazyLoadArtwork(song.getFilePath(), cardArt, 105);
+            lazyLoadArtwork(song.getFilePath(), cardArt, 140);
 
             artHolder.getChildren().addAll(fallbackIcon, cardArt);
 
+            // FIX 3: Shrink text boundary labels to match the narrow card architecture
             Label title = new Label(song.getTitle());
             title.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: white;");
             title.setAlignment(Pos.CENTER);
-            title.setMaxWidth(115);
+            title.setMaxWidth(130);
 
             Label artist = new Label(song.getArtist());
             artist.setStyle("-fx-font-size: 10px; -fx-text-fill: #aaaaaa;");
             artist.setAlignment(Pos.CENTER);
-            artist.setMaxWidth(115);
+            artist.setMaxWidth(130);
 
             card.getChildren().addAll(artHolder, title, artist);
 
@@ -2470,6 +2646,8 @@ public class SonusApplication
         scrollPane.setContent(tilePane);
         playlistContainer.getChildren().setAll(scrollPane);
     }
+
+
 
     public static void main(String[] args) {
 
