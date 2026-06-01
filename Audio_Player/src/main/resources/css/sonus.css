@@ -205,3 +205,125 @@
 
     -fx-text-fill: white;
 }
+/* =========================
+   Scroll Bar
+   ========================= */
+
+.scroll-bar {
+
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .track {
+
+    -fx-background-color: #22242c;
+
+    -fx-background-radius: 10;
+}
+
+.scroll-bar .thumb {
+
+    -fx-background-color: #4a4f60;
+
+    -fx-background-radius: 10;
+}
+
+.scroll-bar .thumb:hover {
+
+    -fx-background-color: #5d6478;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+
+    -fx-background-color: transparent;
+
+    -fx-padding: 0;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+
+    -fx-background-color: transparent;
+}
+/* =========================
+   Queue View
+   ========================= */
+
+.queue-view {
+
+    -fx-background-color: #25262d;
+
+    -fx-control-inner-background: #25262d;
+
+    -fx-background-radius: 14;
+
+    -fx-border-radius: 14;
+
+    -fx-border-color: #353845;
+}
+
+.queue-view .list-cell {
+
+    -fx-background-color: transparent;
+
+    -fx-text-fill: white;
+
+    -fx-padding: 8 12 8 12;
+}
+
+.queue-view .list-cell:selected {
+
+    -fx-background-color: #3b82f6;
+
+    -fx-text-fill: white;
+}
+
+.queue-view .list-cell:hover {
+
+    -fx-background-color: #313340;
+}
+.queue-view .placeholder .label {
+
+    -fx-text-fill: #9aa0aa;
+}
+.glass-button {
+
+    -fx-background-color:
+        linear-gradient(
+            to bottom,
+            #313540,
+            #262a34
+        );
+
+    -fx-text-fill: white;
+
+    -fx-background-radius: 14;
+
+    -fx-border-radius: 14;
+
+    -fx-border-color: rgba(255,255,255,0.08);
+
+    -fx-border-width: 1;
+
+    -fx-padding: 8 16;
+
+    -fx-font-size: 13px;
+
+    -fx-font-weight: bold;
+}
+
+.glass-button:hover {
+
+    -fx-background-color:
+        linear-gradient(
+            to bottom,
+            #3b404d,
+            #303440
+        );
+}
+
+.glass-button .arrow {
+
+    -fx-background-color: white;
+}

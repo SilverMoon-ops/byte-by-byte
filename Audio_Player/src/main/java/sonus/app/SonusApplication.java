@@ -91,6 +91,8 @@ public class SonusApplication
 
     private ImageView albumArtView;
 
+    private Label songInfoLabel;
+
     private long lastSeekTimestamp = 0;
 
     private String currentViewMode = "Compact";// Tracks view rendering layout style
@@ -98,14 +100,48 @@ public class SonusApplication
     private final java.util.Map<String, Image> artworkCache = new java.util.HashMap<>();
     private final Image defaultCover = new Image("https://placehold.co/100x100/222222/ffffff?text=Music"); // Fallback placeholder
 
+    // =====================================================================
+    // KEYBOARD SHORTCUT HANDLERS - Store as class fields for easy access
+    // =====================================================================
+    private Button addSongButton;
+    private Button addMultipleButton;
+    private Button addFolderButton;
+    private Button removeSongButton;
+    private Button clearPlaylistButton;
+    private Button shuffleButton;
+    private Button repeatButton;
+    private Button previousButton;
+    private Button stopButton;
+    private Button nextButton;
+    private Button queueButton;
+    private Button removeQueueButton;
+    private Button clearQueueButton;
+
+    private ListView<Song> playlistView;
+    private ListView<Song> queueView;
+    private TextField searchField;
+    private MenuButton sortButton;
+    private MenuButton viewButton;
+    private MenuButton speedButton;
+
+    private ObservableList<Song> playlistItems;
+    private ObservableList<Song> queueItems;
+    private PlaylistManager playlistManager;
+
     @Override
     public void start(Stage stage) {
+
+        stage.getIcons().add(
+                new Image(
+                        getClass().getResourceAsStream("/images/sonus-icon.png")
+                )
+        );
 
         //====================
         // Playlist Manager
         //======================
 
-        PlaylistManager playlistManager =
+        this.playlistManager =
                 new PlaylistManager();
 
         // =========================
@@ -139,12 +175,12 @@ public class SonusApplication
         // Playlist View Data
         // =========================
 
-        ObservableList<Song> playlistItems =
+        this.playlistItems =
                 FXCollections.observableArrayList(
                         playlistManager.getSongs()
                 );
 
-        ObservableList<Song> queueItems =
+        this.queueItems =
                 FXCollections.observableArrayList();
 
         queueItems.addAll(
@@ -171,7 +207,7 @@ public class SonusApplication
         // =========================
         // Playlist View
         // =========================
-        ListView<Song> playlistView =
+        this.playlistView =
                 new ListView<>(sortedSongs); // Now points to sortedSongs directly
 
         playlistView.setPrefWidth(700);
@@ -185,7 +221,7 @@ public class SonusApplication
 
         StackPane playlistContainer = new StackPane(playlistView);
 
-        ListView<Song> queueView =
+        this.queueView =
                 new ListView<>(queueItems);
 
         queueView.setPrefWidth(320);
@@ -407,6 +443,8 @@ public class SonusApplication
 
                         artistLabel,
 
+                        songInfoLabel,
+
                         albumArtView,
 
                         vinylDiscAssembly
@@ -487,7 +525,7 @@ public class SonusApplication
         });*/
 
         // Search Bar
-        TextField searchField =
+        this.searchField =
                 new TextField();
 
         searchField
@@ -537,11 +575,13 @@ public class SonusApplication
         // =====================================================================
         // Sort Dropdown Menu (VLC Style)
         // =====================================================================
-        MenuButton sortButton = new MenuButton("Sort");
+        this.sortButton = new MenuButton("Sort");
 
         sortButton
                 .getStyleClass()
                 .add("glass-button");
+
+        sortButton.setPrefHeight(40);
 
         MenuItem sortByTitle = new MenuItem("Title");
         MenuItem sortByArtist = new MenuItem("Artist");
@@ -573,11 +613,13 @@ public class SonusApplication
         // =====================================================================
         // View Dropdown Menu & Cell Factory Layout Switcher (VLC Style - 3 View Modes)
         // =====================================================================
-        MenuButton viewButton = new MenuButton("Playlist View");
+        this.viewButton = new MenuButton("Playlist View");
 
         viewButton
                 .getStyleClass()
                 .add("glass-button");
+
+        viewButton.setPrefHeight(40);
 
         MenuItem viewCompact = new MenuItem("Compact List");
         MenuItem viewDetailed = new MenuItem("Detailed Rows");
@@ -602,13 +644,13 @@ public class SonusApplication
         viewGrid.setOnAction(e -> {
             currentViewMode = "Grid";
             viewButton.setText("View: Icon Grid");
-            renderGridView(playlistView, playlistContainer, playlistManager, engine, songTitleLabel, artistLabel, albumArtView, vinylDiscAssembly, playPauseButton, progressSlider, currentTimeLabel);
+            renderGridView(playlistView, playlistContainer, playlistManager, engine, songTitleLabel, artistLabel, songInfoLabel, albumArtView, vinylDiscAssembly, playPauseButton, progressSlider, currentTimeLabel);
         });
 
         // Auto-refresh the Grid Layout if user searches or sorts items while Grid view is active
         sortedSongs.addListener((javafx.collections.ListChangeListener<Song>) change -> {
             if ("Grid".equals(currentViewMode)) {
-                renderGridView(playlistView, playlistContainer, playlistManager, engine, songTitleLabel, artistLabel, albumArtView, vinylDiscAssembly, playPauseButton, progressSlider, currentTimeLabel);
+                renderGridView(playlistView, playlistContainer, playlistManager, engine, songTitleLabel, artistLabel, songInfoLabel, albumArtView, vinylDiscAssembly, playPauseButton, progressSlider, currentTimeLabel);
             }
         });
 
@@ -748,19 +790,19 @@ public class SonusApplication
                                 "-fx-text-fill: white;"
                 );
 
-                Label artistLabel =
+                Label detailedArtistLabel =
                         new Label(
                                 song.getArtist()
                         );
 
-                artistLabel.setStyle(
+                detailedArtistLabel.setStyle(
                         "-fx-text-fill: #b0b7c3;" +
                                 "-fx-font-size: 11px;"
                 );
 
                 textStack.getChildren().addAll(
                         titleLabel,
-                        artistLabel
+                        detailedArtistLabel
                 );
 
                 // Badges
@@ -834,8 +876,27 @@ public class SonusApplication
         songTitleLabel =
                 new Label("No song selected");
 
+        songTitleLabel.setStyle(
+                "-fx-font-size: 20px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-text-fill: white;"
+        );
+
         artistLabel =
                 new Label("");
+
+        artistLabel.setStyle(
+                "-fx-font-size: 15px;" +
+                        "-fx-text-fill: #d0d0d0;"
+        );
+
+        songInfoLabel =
+                new Label("");
+
+        songInfoLabel.setStyle(
+                "-fx-font-size: 12px;" +
+                        "-fx-text-fill: #9aa0aa;"
+        );
 
         albumArtView =
                 new ImageView();
@@ -946,6 +1007,8 @@ public class SonusApplication
 
                             artistLabel,
 
+                            songInfoLabel,
+
                             albumArtView,
 
                             vinylDiscAssembly
@@ -999,6 +1062,8 @@ public class SonusApplication
                             songTitleLabel,
 
                             artistLabel,
+
+                            songInfoLabel,
 
                             albumArtView,
 
@@ -1114,7 +1179,11 @@ public class SonusApplication
         // =====================================================================
         // Playback Speed Selector (YouTube / VLC Style)
         // =====================================================================
-        MenuButton speedButton = new MenuButton("Speed:1.0x");
+        this.speedButton = new MenuButton("1.0x");
+
+        speedButton
+                .getStyleClass()
+                .add("glass-button");
         speedButton.setPrefHeight(40); // Matches the height of your playback control buttons
 
         MenuItem speed05 = new MenuItem("0.5x (Slow)");
@@ -1150,19 +1219,19 @@ public class SonusApplication
         // =========================
         // Toolbar Buttons
         // =========================
-        Button addSongButton =
+        this.addSongButton =
                 new Button("Add Song");
 
-        Button addMultipleButton =
+        this.addMultipleButton =
                 new Button("Add Multiple");
 
-        Button addFolderButton =
+        this.addFolderButton =
                 new Button("Add Folder");
 
-        Button removeSongButton =
+        this.removeSongButton =
                 new Button("Remove Song");
 
-        Button clearPlaylistButton =
+        this.clearPlaylistButton =
                 new Button("Clear Playlist");
 
         // =========================
@@ -1325,6 +1394,8 @@ public class SonusApplication
 
                         artistLabel,
 
+                        songInfoLabel,
+
                         albumArtView,
 
                         vinylDiscAssembly
@@ -1347,31 +1418,31 @@ public class SonusApplication
         // =========================
         // Control Buttons
         // =========================
-        Button shuffleButton =
+        this.shuffleButton =
                 new Button("🔀");
 
-        Button repeatButton =
+        this.repeatButton =
                 new Button("➡");
 
-        Button previousButton =
+        this.previousButton =
                 new Button("⏮");
 
         playPauseButton =
                 new Button("▶");
 
-        Button stopButton =
+        this.stopButton =
                 new Button("⏹");
 
-        Button nextButton =
+        this.nextButton =
                 new Button("⏭");
 
-        Button queueButton =
+        this.queueButton =
                 new Button("Queue");
 
-        Button removeQueueButton =
+        this.removeQueueButton =
                 new Button("Remove Queue");
 
-        Button clearQueueButton =
+        this.clearQueueButton =
                 new Button("Clear Queue");
 
         previousButton.setPrefSize(50, 40);
@@ -1451,6 +1522,8 @@ public class SonusApplication
 
                             artistLabel,
 
+                            songInfoLabel,
+
                             albumArtView,
 
                             vinylDiscAssembly
@@ -1515,6 +1588,8 @@ public class SonusApplication
 
                         artistLabel,
 
+                        songInfoLabel,
+
                         albumArtView,
 
                         vinylDiscAssembly
@@ -1562,6 +1637,8 @@ public class SonusApplication
                         songTitleLabel,
 
                         artistLabel,
+
+                        songInfoLabel,
 
                         albumArtView,
 
@@ -1845,28 +1922,24 @@ public class SonusApplication
 
 
         // =====================================================================
-        // 2. Now Playing Display
+        // 2. Now Playing Display - FIXED ARTWORK SIZING
         // =====================================================================
         nowPlayingLabel.setText(
                 "NOW PLAYING"
         );
 
-        albumArtView.setFitWidth(
-                110
-        );
+        // **FIX: Increase artwork display size from 110x110 to 180x180**
+        albumArtView.setFitWidth(160);
+        albumArtView.setFitHeight(160);
+        albumArtView.setPreserveRatio(true);
+        albumArtView.setSmooth(true);
+        albumArtView.setCache(true);
 
-        albumArtView.setFitHeight(
-                110
-        );
-
-        albumArtView.setPreserveRatio(
-                true
-        );
-
+        // **FIX: Update clip rectangle to match new size**
         javafx.scene.shape.Rectangle artClip =
                 new javafx.scene.shape.Rectangle(
-                        110,
-                        110
+                        150,
+                        150
                 );
 
         artClip.setArcWidth(
@@ -1888,24 +1961,22 @@ public class SonusApplication
                 );
 
         albumArtContainer.setStyle(
-                "-fx-background-color: #fcfcfc; " +
-                        "-fx-border-color: #e0e0e0; " +
-                        "-fx-border-width: 1; " +
-                        "-fx-border-radius: 6px; " +
-                        "-fx-background-radius: 6px;"
+                "-fx-background-color: transparent;"
         );
 
+        // **FIX: Update container size to match artwork**
         albumArtContainer.setPrefSize(
-                110,
-                110
+                150,
+                150
         );
 
-        albumArtContainer.setMinWidth(
-                110
+        albumArtContainer.setMinSize(
+                150,
+                150
         );
 
         albumArtContainer.setMinHeight(
-                110
+                180
         );
 
         albumArtContainer.setAlignment(
@@ -1917,8 +1988,13 @@ public class SonusApplication
                         4,
                         nowPlayingLabel,
                         songTitleLabel,
-                        artistLabel
+                        artistLabel,
+                        songInfoLabel
                 );
+        songInfoLabel.setStyle(
+                "-fx-text-fill: #9aa0aa; " +
+                        "-fx-font-size: 12px;"
+        );
         metadataTextSection.setAlignment(Pos.CENTER_LEFT);
 
         HBox nowPlayingHeader =
@@ -2132,33 +2208,14 @@ public class SonusApplication
                         .toExternalForm()
         );
 
+        // =====================================================================
+       // COMPREHENSIVE KEYBOARD SHORTCUT SYSTEM
+      // =====================================================================
+
+
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            // Only toggle playback if the search bar isn't being typed into
-            if (event.getCode() == KeyCode.SPACE && !searchField.isFocused()) {
-                playPauseButton.fire();
-                event.consume();
-            }
-            // Delete items conditionally based on which list is currently active
-            else if (event.getCode() == KeyCode.DELETE && !searchField.isFocused()) {
-                if (queueView.isFocused()) {
-                    // Trigger your remove from queue logic/button
-                    removeQueueButton.fire();
-                } else {
-                    removeSongButton.fire();
-                }
-                event.consume();
-            }
+            handleKeyboardShortcuts(event);
         });
-
-// 2. Map Ctrl/Cmd combinations directly to global system accelerators
-        scene.getAccelerators().put(new javafx.scene.input.KeyCodeCombination(KeyCode.O, javafx.scene.input.KeyCombination.SHORTCUT_DOWN),
-                () -> Platform.runLater(addSongButton::fire));
-
-        scene.getAccelerators().put(new javafx.scene.input.KeyCodeCombination(KeyCode.F, javafx.scene.input.KeyCombination.SHORTCUT_DOWN),
-                () -> Platform.runLater(searchField::requestFocus));
-
-        scene.getAccelerators().put(new javafx.scene.input.KeyCodeCombination(KeyCode.Q, javafx.scene.input.KeyCombination.SHORTCUT_DOWN),
-                () -> Platform.runLater(this::toggleQueueVisibility)); // toggles queue visibility state
 
         // =========================
         // Drag Over
@@ -2279,6 +2336,8 @@ public class SonusApplication
 
                             artistLabel,
 
+                            songInfoLabel,
+
                             albumArtView,
 
                             vinylDiscAssembly
@@ -2335,6 +2394,8 @@ public class SonusApplication
 
             Label artistLabel,
 
+            Label songInfoLabel,
+
             ImageView albumArtView,
 
             StackPane vinylDiscAssembly
@@ -2350,6 +2411,12 @@ public class SonusApplication
 
         artistLabel.setText(
                 song.getArtist()
+        );
+
+        songInfoLabel.setText(
+                song.getExtension().toUpperCase()
+                        + " • "
+                        + formatTime(song.getDuration())
         );
 
         playlistView
@@ -2563,7 +2630,7 @@ public class SonusApplication
     // =====================================================================
     // Dynamic VLC Grid UI Builder Engine
     // =====================================================================
-    private void renderGridView(ListView<Song> playlistView, StackPane playlistContainer, PlaylistManager playlistManager, AudioEngine engine, Label songTitleLabel, Label artistLabel, ImageView albumArtView, StackPane vinylDiscAssembly, Button playPauseButton, Slider progressSlider, Label currentTimeLabel) {
+    private void renderGridView(ListView<Song> playlistView, StackPane playlistContainer, PlaylistManager playlistManager, AudioEngine engine, Label songTitleLabel, Label artistLabel, Label songInfoLabel, ImageView albumArtView, StackPane vinylDiscAssembly, Button playPauseButton, Slider progressSlider, Label currentTimeLabel) {
         javafx.scene.control.ScrollPane scrollPane = new javafx.scene.control.ScrollPane();
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
@@ -2631,7 +2698,7 @@ public class SonusApplication
                         progressSlider.setValue(0);
                         currentTimeLabel.setText("00:00");
                         playlistManager.setCurrentSong(song);
-                        updateCurrentSongUI(song, playlistView, songTitleLabel, artistLabel, albumArtView, vinylDiscAssembly);
+                        updateCurrentSongUI(song, playlistView, songTitleLabel, artistLabel, songInfoLabel, albumArtView, vinylDiscAssembly);
                         engine.play();
                         playPauseButton.setText("⏸");
                     } catch (Exception ex) {
@@ -2645,6 +2712,235 @@ public class SonusApplication
 
         scrollPane.setContent(tilePane);
         playlistContainer.getChildren().setAll(scrollPane);
+    }
+
+    // =====================================================================
+    // COMPREHENSIVE KEYBOARD SHORTCUT HANDLER
+    // =====================================================================
+    private void handleKeyboardShortcuts(KeyEvent event) {
+        KeyCode code = event.getCode();
+
+        // Ignore if typing in search field
+        if (searchField.isFocused() && (code.isLetterKey() || code.isDigitKey() ||
+                code == KeyCode.SPACE || code == KeyCode.BACK_SPACE)) {
+            return;
+        }
+
+        switch (code) {
+            // PLAYBACK CONTROLS
+            case SPACE:
+                playPauseButton.fire();
+                event.consume();
+                break;
+
+            case ENTER:
+                // Play selected song from playlist or queue
+                if (queueView.isFocused()) {
+                    Song queuedSong = queueView.getSelectionModel().getSelectedItem();
+                    if (queuedSong != null) {
+                        playSong(queuedSong);
+                    }
+                } else {
+                    Song selectedSong = playlistView.getSelectionModel().getSelectedItem();
+                    if (selectedSong != null) {
+                        playSong(selectedSong);
+                    }
+                }
+                event.consume();
+                break;
+
+            case RIGHT:
+                // Next song
+                if (!searchField.isFocused() && !playlistView.isFocused() && !queueView.isFocused()) {
+                    nextButton.fire();
+                    event.consume();
+                }
+                break;
+
+            case LEFT:
+                // Previous song
+                if (!searchField.isFocused() && !playlistView.isFocused() && !queueView.isFocused()) {
+                    previousButton.fire();
+                    event.consume();
+                }
+                break;
+
+            case UP:
+                // Volume up
+                if (!searchField.isFocused()) {
+                    volumeSlider.setValue(Math.min(100, volumeSlider.getValue() + 5));
+                    event.consume();
+                }
+                break;
+
+            case DOWN:
+                // Volume down
+                if (!searchField.isFocused()) {
+                    volumeSlider.setValue(Math.max(0, volumeSlider.getValue() - 5));
+                    event.consume();
+                }
+                break;
+
+            case DELETE:
+                // Delete selected song
+                if (!searchField.isFocused()) {
+                    if (queueView.isFocused()) {
+                        removeQueueButton.fire();
+                    } else {
+                        removeSongButton.fire();
+                    }
+                    event.consume();
+                }
+                break;
+
+            default:
+                break;
+        }
+
+        // MODIFIER SHORTCUTS (Ctrl/Cmd)
+        if (event.isControlDown() || event.isMetaDown()) {
+            switch (code) {
+                case O:
+                    // Open file
+                    addSongButton.fire();
+                    event.consume();
+                    break;
+
+                case M:
+                    // Add Multiple
+                    addMultipleButton.fire();
+                    event.consume();
+                    break;
+
+                case L:
+                    // Add Folder
+                    addFolderButton.fire();
+                    event.consume();
+                    break;
+
+                case F:
+                    // Focus search
+                    searchField.requestFocus();
+                    searchField.selectAll();
+                    event.consume();
+                    break;
+
+                case Q:
+                    // Toggle queue
+                    toggleQueueVisibility();
+                    event.consume();
+                    break;
+
+                case P:
+                    // Play/Pause
+                    playPauseButton.fire();
+                    event.consume();
+                    break;
+
+                case N:
+                    // Next
+                    nextButton.fire();
+                    event.consume();
+                    break;
+
+                case B:
+                    // Previous (Back)
+                    previousButton.fire();
+                    event.consume();
+                    break;
+
+                case S:
+                    // Shuffle toggle
+                    shuffleButton.fire();
+                    event.consume();
+                    break;
+
+                case R:
+                    // Repeat toggle
+                    repeatButton.fire();
+                    event.consume();
+                    break;
+
+                case X:
+                    // Stop
+                    stopButton.fire();
+                    event.consume();
+                    break;
+
+                case K:
+                    // Clear playlist
+                    clearPlaylistButton.fire();
+                    event.consume();
+                    break;
+
+                case DELETE:
+                    // Clear all
+                    clearPlaylistButton.fire();
+                    event.consume();
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        // SHIFT SHORTCUTS (Alternative keybinds)
+        if (event.isShiftDown()) {
+            switch (code) {
+                case UP:
+                    // Volume up (faster)
+                    volumeSlider.setValue(Math.min(100, volumeSlider.getValue() + 10));
+                    event.consume();
+                    break;
+
+                case DOWN:
+                    // Volume down (faster)
+                    volumeSlider.setValue(Math.max(0, volumeSlider.getValue() - 10));
+                    event.consume();
+                    break;
+
+                case RIGHT:
+                    // Seek forward 10 seconds
+                    engine.seek(engine.getCurrentTime() + 10);
+                    event.consume();
+                    break;
+
+                case LEFT:
+                    // Seek backward 10 seconds
+                    engine.seek(Math.max(0, engine.getCurrentTime() - 10));
+                    event.consume();
+                    break;
+
+                case Q:
+                    // Clear queue
+                    clearQueueButton.fire();
+                    event.consume();
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    }
+
+    // =====================================================================
+    // Helper Method: Play Selected Song
+    // =====================================================================
+    private void playSong(Song song) {
+        if (song == null) return;
+
+        try {
+            engine.stop();
+            engine.load(song);
+            progressSlider.setValue(0);
+            currentTimeLabel.setText("00:00");
+            playlistManager.setCurrentSong(song);
+            updateCurrentSongUI(song, playlistView, songTitleLabel, artistLabel, songInfoLabel, albumArtView, vinylDiscAssembly);
+            engine.play();
+            playPauseButton.setText("⏸");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 
