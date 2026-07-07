@@ -1,0 +1,137 @@
+:root {
+  --bg-color: #081b31;
+  --text-color: #fff;
+}
+
+body.theme-sunset {
+  --bg-color: #d1495b;
+}
+body.theme-forest {
+  --bg-color: #1b4332;
+}
+body.theme-ocean {
+  --bg-color: #023e8a;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h1 {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  height: 5rem;
+  line-height: 5rem;
+}
+
+/* Mode toggle buttons */
+.mode-toggle {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.mode-btn {
+  padding: 0.6rem 1.2rem;
+  border: 2px solid var(--bg-color);
+  background-color: #fff;
+  color: var(--bg-color);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.mode-btn.active {
+  background-color: var(--bg-color);
+  color: #fff;
+}
+
+/* Theme picker */
+.theme-picker {
+  margin-top: 1.2rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 1.5rem;
+}
+
+.theme-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+}
+
+#turn-indicator {
+  margin-top: 1.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--bg-color);
+  min-height: 1.5rem;
+}
+
+.choices {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  margin-top: 2rem;
+}
+
+.choice {
+  height: 165px;
+  width: 165px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: 0.2s ease;
+}
+
+.choice:hover {
+  cursor: pointer;
+  background-color: var(--bg-color);
+}
+
+img {
+  height: 150px;
+  width: 150px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.score-board {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  margin-top: 3rem;
+  gap: 5rem;
+}
+
+#user-score,
+#comp-score {
+  font-size: 4rem;
+}
+
+.msg-container {
+  margin-top: 3rem;
+}
+
+#msg {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-size: 2rem;
+  display: inline-block;
+  padding: 1rem 1.5rem;
+  border-radius: 1rem;
+}

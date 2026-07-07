@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rock Paper Scissors Game</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>Rock Paper Scissors</h1>
+
+    <div class="mode-toggle">
+      <button id="vsComputerBtn" class="mode-btn active">vs Computer</button>
+      <button id="vsPlayerBtn" class="mode-btn">vs Player 2</button>
+    </div>
+
+    <div class="theme-picker">
+      <button class="theme-btn" data-theme="theme-default" title="Default">
+        ⚫
+      </button>
+      <button class="theme-btn" data-theme="theme-sunset" title="Sunset">
+        🌅
+      </button>
+      <button class="theme-btn" data-theme="theme-forest" title="Forest">
+        🌲
+      </button>
+      <button class="theme-btn" data-theme="theme-ocean" title="Ocean">
+        🌊
+      </button>
+    </div>
+
+    <p id="turn-indicator"></p>
+
+    <div class="choices">
+      <div class="choice" id="rock">
+        <img src="./images/rock.png" alt="rock" />
+      </div>
+      <div class="choice" id="paper">
+        <img src="./images/paper.png" alt="paper" />
+      </div>
+      <div class="choice" id="scissors">
+        <img src="./images/scissors.png" alt="scissors" />
+      </div>
+    </div>
+
+    <div class="score-board">
+      <div class="score">
+        <p id="user-score">0</p>
+        <p id="user-label">You</p>
+      </div>
+      <div class="score">
+        <p id="comp-score">0</p>
+        <p id="comp-label">Comp</p>
+      </div>
+    </div>
+
+    <div class="msg-container">
+      <p id="msg">Play your move</p>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
